@@ -135,7 +135,7 @@ python Plot_abSENSE.py \
 ```
 
 For example, to analyze the S. cerevisiae gene Uli1, listed in the bitscore
-file unde its RefSeq ID (NP_116682.3), type:
+file under its RefSeq ID (NP\_116682.3), type:
 
 ```
 python Plot_abSENSE.py \
@@ -145,7 +145,7 @@ python Plot_abSENSE.py \
 ```
 
 The same results as above will be computed, but now they will be output to the
-terminal, and then the visualiation will be shown.
+terminal, and then the visualization will be shown.
 
 
 ### All Options
@@ -181,7 +181,7 @@ below.
 `--dblenfile`: Allows you to specify a file containing the sizes (in aa) of
 the database in which the homology search for each of your N species is
 performed. Default is 400 amino acids * 20,000 amino acids / gene = 8,000,000
-amimo acids (~average protein and proteome size in many species) for all
+amino acids (~average protein and proteome size in many species) for all
 species.
 
 abSENSE predicts a bitscore, which is then converted to an E-value to determine
@@ -264,7 +264,7 @@ will read "not\_enough\_data".
 
 #### `Predicted_bitscores`
 
-For each gene in the analysis, this contains the predicted (maximum likliehood)
+For each gene in the analysis, this contains the predicted (maximum likelihood)
 bitscore of a homolog in each species.
 
 By default, bitscores are only predicted in species in which the gene was not

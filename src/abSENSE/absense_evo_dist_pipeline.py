@@ -500,7 +500,9 @@ def create_muscle_files(adj_list, fasta_files, spcies_list):
         with open(f_name, 'w') as f:
             len_of_line = 70
             for m in range(len(transposed_list)):
-                f.write('>' + spcies_list[m][0] + '_' + spcies_list[m].replace(' ', '_').split('_')[1][0:5] + adj_list[k][m] + '\n')
+                f.write('>' + spcies_list[m][0] + '_' +
+                        spcies_list[m].replace(' ', '_').split('_')[1][0:5] +
+                        adj_list[k][m] + '\n')
 
                 # Write with proper line breaks
                 for p in range(0, len(orthos[k][m]), len_of_line):

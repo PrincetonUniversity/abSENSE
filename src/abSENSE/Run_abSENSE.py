@@ -99,13 +99,13 @@ genelist = bitscores[1:, 0]  # skip header
 ethresh = args.Eval
 
 
-if args.genelenfile == None:
+if args.genelenfile is None:
     genelengthfilefound = False
     defgenelen = float(400)
 else:
     genelengthfilefound = True
 
-if args.dblenfile == None:
+if args.dblenfile is None:
     speciesdblengthfilefound = False
     defdbsize = float(8000000)
     speciesdblengths = np.transpose(
@@ -115,7 +115,7 @@ else:
     speciesdblengthfilefound = True
 
 
-if genelengthfilefound == True:
+if genelengthfilefound:
     genelengthfilecheck = glob.glob(args.genelenfile)
     genelengthfilename = args.genelenfile
     if len(genelengthfilecheck) != 1:
@@ -126,7 +126,7 @@ if genelengthfilefound == True:
         genelengths = np.genfromtxt(args.genelenfile, dtype=str, delimiter="\t")
 
 
-if speciesdblengthfilefound == True:
+if speciesdblengthfilefound:
     speciesdblengthfilecheck = glob.glob(args.dblenfile)
     speciesdblengthfilename = args.dblenfile
     if len(speciesdblengthfilecheck) != 1:
@@ -141,50 +141,51 @@ if speciesdblengthfilefound == True:
 ordervec = (
     []
 )  # first index is location of first species in speciesorder in the file; and so on
-if args.includeonly != None:
-    pred_specs = re.split(",", args.includeonly)
-    pred_spec_locs = []
-else:
+if args.includeonly is None:
     pred_specs = []
     pred_spec_locs = []
-for i in range(0, len(speciesorder)):
+else:
+    pred_specs = re.split(",", args.includeonly)
+    pred_spec_locs = []
+
+for i, species in enumerate(speciesorder):
     found = False
-    for j in range(0, len(bitscores[0])):
-        if speciesorder[i] in bitscores[0][j]:
+    for j, score in enumerate(bitscores[0]):
+        if species in score:
             ordervec.append(j)
             found = True
-            if speciesorder[i] in pred_specs:
+            if species in pred_specs:
                 pred_spec_locs.append(i)
-    if found == False:
+    if not found:
         sys.exit(
-            "One or more species names in header of bitscore file do not match species names in header of distance file! The first I encountered was "
-            + speciesorder[i]
-            + ". Quitting. \n"
+            "One or more species names in header of bitscore file do not "
+            "match species names in header of distance file! "
+            f"The first I encountered was {species}. Quitting. \n"
         )
 
 invordervec = (
     []
 )  # first index is location of first species in file in speciesorder; and so on
-for i in range(0, len(bitscores[0])):
-    for j in range(0, len(speciesorder)):
-        if bitscores[0][i] in speciesorder[j]:
+for score in bitscores[0]:
+    for j, species in enumerate(speciesorder):
+        if score in species:
             invordervec.append(j)
 
 
 ## Find species db sizes in the right order, from either file or manual input (done above)
 speciestotallengths = []
-for i in range(0, len(speciesorder)):
+for species in speciesorder:
     found = False
-    for j in range(0, len(speciesdblengths)):
-        if speciesorder[i] in speciesdblengths[j][0]:
-            speciestotallengths.append(float(speciesdblengths[j][1]))
+    for species_db in speciesdblengths:
+        if species in species_db[0]:
+            speciestotallengths.append(float(species_db[1]))
             found = True
-    if found == False:
-        if speciesdblengthfilefound == True:
+    if not found:
+        if speciesdblengthfilefound:
             sys.exit(
-                "One or more species names in your database size file do not match species names in distance file! The first I encountered was "
-                + speciesorder[i]
-                + ". Quitting. \n"
+                "One or more species names in your database size file do not "
+                "match species names in distance file! The first I "
+                f"encountered was {species}. Quitting. \n"
             )
 
 
@@ -203,7 +204,10 @@ def isfloat(s):
         return False
 
 
-## function to, where possible, use maximum likelihood estimates of a and b parameter plus estimated covariance matrix to directly sample from the probability distribution of a and b (assume Gaussian with mean of max likelihood estimates and given covariance structure)
+# function to, where possible, use maximum likelihood estimates of a and b
+# parameter plus estimated covariance matrix to directly sample from the
+# probability distribution of a and b (assume Gaussian with mean of max
+# likelihood estimates and given covariance structure)
 def parameter_CI_find(mla, mlb, covar):
 
     testavals = []
@@ -225,39 +229,31 @@ def parameter_CI_find(mla, mlb, covar):
         return "failed"
 
 
-## function to take each of the sampled a, b values and use them to sample directly from the distribution of scores taking into account the Gaussian noise (a function of distance, a, b)
-## this gives an empirical estimate of the prediction interval
 def PI_find(testavals, testbvals, currx):
+    """Gives an empirical estimate of the prediction interval.
+    function to take each of the sampled a, b values and use them to sample
+    directly from the distribution of scores taking into account the Gaussian
+    noise (a function of distance, a, b)
+    ."""
 
     # sample from score distribution: Gaussian with mean a, b and noise determined by distance (currx), a, b
     PIsamples = []
-    for i in range(0, len(testavals)):
-        detval = func(currx, testavals[i], testbvals[i])
+    for test_a_val, test_b_val in zip(testavals, testbvals):
+        detval = func(currx, test_a_val, test_b_val)
         estnoise = np.sqrt(
-            testavals[i]
-            * (1 - math.exp(-1 * testbvals[i] * currx))
-            * (math.exp(-1 * testbvals[i] * currx))
+            test_a_val
+            * (1 - math.exp(-1 * test_b_val * currx))
+            * (math.exp(-1 * test_b_val * currx))
         )
         if estnoise > 0:
-            parpairvals = []
-            for j in range(0, 200):
+            for _ in range(0, 200):
                 PIsamples.append(detval + np.random.normal(0, estnoise))
-                parpairvals.append(detval + np.random.normal(0, estnoise))
         else:
             PIsamples.append(detval)
     # compute mean of sample
     mean = np.mean(PIsamples)
     # compute std dev of sample
     std = np.std(PIsamples)
-
-    # empirically determine, from sampled scores, how many are below detectability threshold
-    undetcount = 0
-    for i in range(0, len(PIsamples)):
-        if PIsamples[i] < bitthresh:
-            undetcount = undetcount + 1
-
-    # compute fraction of sampled scores below threshold = P(undetected) = empriical "p-value"
-    emppval = float(undetcount) / float(len(PIsamples))
 
     # calculate this analytically from std estimate
     pval = stats.norm.cdf(bitthresh, mean, std)
@@ -289,50 +285,52 @@ runinfofile = open(outdirectory + "/" + "Run_info", "w")
 # Write brief summary header to output files
 
 mloutputfile.write(
-    "# This file contains maximum likelihood bitscore predictions for each tested gene in each species"
-    + "\n"
+    "# This file contains maximum likelihood bitscore predictions "
+    "for each tested gene in each species\n"
 )
 lowboundoutputfile.write(
-    "# This file contains the lower bound of the 99% bitscore prediction interval for each tested gene in each species"
-    + "\n"
+    "# This file contains the lower bound of the 99% bitscore prediction "
+    "interval for each tested gene in each species\n"
 )
 highboundoutputfile.write(
-    "# This file contains the upper bound of the 99% bitscore prediction interval for each tested gene in each species"
-    + "\n"
+    "# This file contains the upper bound of the 99% bitscore prediction "
+    "interval for each tested gene in each species\n"
 )
 pvaloutputfile.write(
-    "# This file contains the probability of a homolog being undetected at the specified significance threshold (see run info file) in each tested gene in each species"
-    + "\n"
+    "# This file contains the probability of a homolog being undetected "
+    "at the specified significance threshold (see run info file) in each "
+    "tested gene in each species\n"
 )
 outputfileparams.write(
-    "# This file contains the best-fit parameters (performed using only bitscores from species not omitted from the fit; see run info file) for a and b for each gene"
-    + "\n"
+    "# This file contains the best-fit parameters "
+    "(performed using only bitscores from species not omitted from the fit; "
+    "see run info file) for a and b for each gene\n"
 )
 
 # Write run information to run info output file
 
-runinfofile.write("abSENSE analysis run on " + starttime + "\n")
-runinfofile.write("Input bitscore file: " + args.scorefile + "\n")
-runinfofile.write("Input distance file: " + args.distfile + "\n")
-if genelengthfilefound == True:
-    runinfofile.write("Gene length file: " + args.genelenfile + "\n")
-elif genelengthfilefound == False:
-    runinfofile.write(
-        "Gene length (for all genes): " + str(defgenelen) + " (default)" + "\n"
-    )
-if speciesdblengthfilefound == True:
-    runinfofile.write("Database length file: " + args.dblenfile + "\n")
-elif speciesdblengthfilefound == False:
-    runinfofile.write(
-        "Database length (for all species): " + str(defdbsize) + " (default)" + "\n"
-    )
+runinfofile.write(f"abSENSE analysis run on {starttime}\n")
+runinfofile.write(f"Input bitscore file: {args.scorefile}\n")
+runinfofile.write(f"Input distance file: {args.distfile}\n")
+
+if genelengthfilefound:
+    runinfofile.write(f"Gene length file: {args.genelenfile}\n")
+else:
+    runinfofile.write(f"Gene length (for all genes): {defgenelen} (default)\n")
+
+if speciesdblengthfilefound:
+    runinfofile.write(f"Database length file: {args.dblenfile}\n")
+else:
+    runinfofile.write(f"Database length (for all species): {defdbsize} (default)\n")
+
 runinfofile.write("Species used in fit: ")
-for i in range(0, len(pred_specs)):
-    runinfofile.write(pred_specs[i] + " ")
+for species in pred_specs:
+    runinfofile.write(species + " ")
 if len(pred_specs) == 0:
     runinfofile.write("All (default)")
 runinfofile.write("\n")
-runinfofile.write("E-value threshold: " + str(ethresh) + " (default)" + "\n")
+
+runinfofile.write(f"E-value threshold: {ethresh} (default)\n")
 runinfofile.close()
 
 # Ignore warning that sometimes happen as a result of stochastic sampling but that doesn't affect overall computation
@@ -342,87 +340,74 @@ warnings.filterwarnings("ignore", message="invalid value encountered in sqrt")
 ###### Main execution and output ######
 
 # Write headers to file (first column will have the gene name; subsequent columns have prediction info)
-mloutputfile.write("Gene")
-lowboundoutputfile.write("Gene")
-highboundoutputfile.write("Gene")
-pvaloutputfile.write("Gene")
-outputfileparams.write("Gene")
-for i in range(0, len(speciesorder)):
-    mloutputfile.write("\t" + speciesorder[invordervec[i]])
-    lowboundoutputfile.write("\t" + speciesorder[invordervec[i]])
-    highboundoutputfile.write("\t" + speciesorder[invordervec[i]])
-    pvaloutputfile.write("\t" + speciesorder[invordervec[i]])
-mloutputfile.write("\n")
-lowboundoutputfile.write("\n")
-highboundoutputfile.write("\n")
-pvaloutputfile.write("\n")
-outputfileparams.write("\t" + "a" + "\t" + "b" + "\n")
+header = "Gene\t" + "\t".join(speciesorder[i] for i in invordervec) + "\n"
+mloutputfile.write(header)
+lowboundoutputfile.write(header)
+highboundoutputfile.write(header)
+pvaloutputfile.write(header)
+
+outputfileparams.write("Gene\ta\tb\n")
 
 
 print("Running!")
 
-for i in range(0, len(genelist)):
+for i, gene in enumerate(genelist):
     # report current position and gene name
-    print("gene", i, "out of", str(len(genelist)), ":", genelist[i])
+    print(f"gene {i} out of {len(genelist)}: {gene}")
 
     # print current gene to output file
-    mloutputfile.write(genelist[i])
-    lowboundoutputfile.write(genelist[i])
-    highboundoutputfile.write(genelist[i])
-    outputfileparams.write(genelist[i])
-    pvaloutputfile.write(genelist[i])
+    mloutputfile.write(gene)
+    lowboundoutputfile.write(gene)
+    highboundoutputfile.write(gene)
+    outputfileparams.write(gene)
+    pvaloutputfile.write(gene)
 
     # make new arrays to put truncated (not using omitted species) scores, distances
     genebitscores = []
     truncdistances = []
 
-    # make new arrays to indicate which species/distances are ambiguous orthology but have a homolog; don't predict these later
+    # make new arrays to indicate which species/distances are ambiguous
+    # orthology but have a homolog; don't predict these later
     ambigdists = []
 
     # if gene length input file given, look for length of current gene
     # if not given, assume default value (specified above)
     lengthfound = False
-    if genelengthfilefound == True:
+    if genelengthfilefound:
         for z in range(1, len(genelengths)):  # skip header
-            if genelist[i] in genelengths[z]:
+            if gene in genelengths[z]:
                 seqlen = float(genelengths[z][1])
                 lengthfound = True
                 break
-        if lengthfound == False:
+        if not lengthfound:
             sys.exit(
-                "Gene "
-                + genelist[i]
-                + " not found in specified gene length file! Quitting \n"
+                f"Gene {gene} not found in specified " "gene length file! Quitting \n"
             )
-    elif genelengthfilefound == False:
+    else:
         seqlen = float(defgenelen)
 
     # put scores for current gene in bitscore file in right order
     orderedscores = []
-    for k in range(0, len(ordervec)):  # ordervec starts at 1
-        orderedscores.append(
-            bitscores[i + 1][ordervec[k]]
-        )  ## # i + 1 because header skipped in gene list formation, so one behind now
+    for index in ordervec:  # ordervec starts at 1
+        # i + 1 because header skipped in gene list formation, so one behind now
+        orderedscores.append(bitscores[i + 1][index])
+
     # append score of species and corresponding distance of species to gene-specific distance, score vectors if:
     # score isn't 0 (can't distinguish absence from loss from bad data etc)
     # score isn't 'N/A' or some other string (ie indicator of unclear orthology or otherwise absent, or generally unclear what it is)
     # score isn't from species that is to be excluded from fit
-    for k in range(0, len(orderedscores)):
+    for k, score in enumerate(orderedscores):
         if len(pred_spec_locs) > 0:
-            if (
-                isfloat(orderedscores[k]) == True
-                and orderedscores[k] != "0"
-                and k in pred_spec_locs
-            ):
-                genebitscores.append(float(orderedscores[k]))
+            if k in pred_spec_locs and score != "0" and isfloat(score):
+                genebitscores.append(float(score))
                 truncdistances.append(rawdistances[k])
-            elif orderedscores[k] == "N/A":
+            elif score == "N/A":
                 ambigdists.append(rawdistances[k])
         else:
-            if isfloat(orderedscores[k]) == True and orderedscores[k] != "0":
-                genebitscores.append(float(orderedscores[k]))
+            if score != "0" and isfloat(score):
+                genebitscores.append(float(score))
                 truncdistances.append(rawdistances[k])
-            elif orderedscores[k] == "N/A":
+            elif score == "N/A":
                 ambigdists.append(rawdistances[k])
 
     if len(truncdistances) > 2:
@@ -434,19 +419,14 @@ for i in range(0, len(genelist)):
                 bounds=((-np.inf, 0), (np.inf, np.inf)),
             )
         except RuntimeError:
-            for j in range(0, len(rawdistances)):
-                mloutputfile.write("\t" + "analysis_error")
-                highboundoutputfile.write("\t" + "analysis_error")
-                lowboundoutputfile.write("\t" + "analysis_error")
-                pvaloutputfile.write("\t" + "analysis_error")
-            mloutputfile.write("\n")
-            highboundoutputfile.write("\n")
-            lowboundoutputfile.write("\n")
-            outputfileparams.write(
-                "\t" + "analysis_error" + "\t" + "analysis_error" + "\n"
-            )
-            pvaloutputfile.write("\n")
+            line = "\t" + "\t".join(["analysis_error"] * len(rawdistances)) + "\n"
+            mloutputfile.write(line)
+            highboundoutputfile.write(line)
+            lowboundoutputfile.write(line)
+            pvaloutputfile.write(line)
+            outputfileparams.write("\tanalysis_error\tanalysis_error\n")
             continue
+
         parout = parameter_CI_find(a, b, covar)
         if parout != "failed":
             testavals, testbvals = parout
@@ -466,103 +446,81 @@ for i in range(0, len(genelist)):
                     highboundoutputfile.write("\t" + str(round(highprediction, 2)))
                     lowboundoutputfile.write("\t" + str(round(lowprediction, 2)))
                     pvaloutputfile.write("\t" + str(round(pval, 2)))
-                elif (
-                    rawdistances[invordervec[j]] in truncdistances
-                ):  #  could make new vector, ambigdists, and test  whether dist is in it herre; if so, don't predict
-                    if args.predall == True:
+                elif rawdistances[invordervec[j]] in truncdistances:
+                    # could make new vector, ambigdists, and test
+                    # whether dist is in it here; if so, don't predict
+                    if args.predall:
                         realscore = genebitscores[
                             truncdistances.index(rawdistances[invordervec[j]])
                         ]
                         mloutputfile.write(
-                            "\t"
-                            + str(prediction)
-                            + "(Ortholog_detected:"
-                            + str(realscore)
-                            + ")"
+                            f"\t{prediction}(Ortholog_detected:{realscore})"
                         )
                         highboundoutputfile.write(
-                            "\t" + str(round(highprediction, 2)) + "(Ortholog_detected)"
+                            f"\t{round(highprediction, 2)}(Ortholog_detected)"
                         )
                         lowboundoutputfile.write(
-                            "\t" + str(round(lowprediction, 2)) + "(Ortholog_detected)"
+                            f"\t{round(lowprediction, 2)}(Ortholog_detected)"
                         )
-                        pvaloutputfile.write(
-                            "\t" + str(round(pval, 2)) + "(Ortholog_detected)"
-                        )
-                    elif args.predall == False:
-                        mloutputfile.write("\t" + "Ortholog_detected")
-                        highboundoutputfile.write("\t" + "Ortholog_detected")
-                        lowboundoutputfile.write("\t" + "Ortholog_detected")
-                        pvaloutputfile.write("\t" + "Ortholog_detected")
+                        pvaloutputfile.write(f"\t{round(pval, 2)}(Ortholog_detected)")
+                    else:
+                        mloutputfile.write("\tOrtholog_detected")
+                        highboundoutputfile.write("\tOrtholog_detected")
+                        lowboundoutputfile.write("\tOrtholog_detected")
+                        pvaloutputfile.write("\tOrtholog_detected")
                 elif rawdistances[invordervec[j]] in ambigdists:
-                    if args.predall == True:
+                    if args.predall:
                         mloutputfile.write(
-                            "\t"
-                            + str(prediction)
-                            + "Homolog_detected(orthology_ambiguous)"
+                            f"\t{prediction}(Homolog_detected(orthology_ambiguous))"
                         )
                         highboundoutputfile.write(
-                            "\t"
-                            + str(round(highprediction, 2))
-                            + "Homolog_detected(orthology_ambiguous)"
+                            f"\t{round(highprediction, 2)}(Homolog_detected(orthology_ambiguous))"
                         )
                         lowboundoutputfile.write(
-                            "\t"
-                            + str(round(lowprediction, 2))
-                            + "Homolog_detected(orthology_ambiguous)"
+                            f"\t{round(lowprediction, 2)}(Homolog_detected(orthology_ambiguous))"
                         )
                         pvaloutputfile.write(
-                            "\t"
-                            + str(round(pval, 2))
-                            + "Homolog_detected(orthology_ambiguous)"
+                            f"\t{round(pval, 2)}(Homolog_detected(orthology_ambiguous))"
                         )
-                    elif args.predall == False:
-                        mloutputfile.write(
-                            "\t" + "Homolog_detected(orthology_ambiguous)"
-                        )
+                    else:
+                        mloutputfile.write("\tHomolog_detected(orthology_ambiguous)")
                         highboundoutputfile.write(
-                            "\t" + "Homolog_detected(orthology_ambiguous)"
+                            "\tHomolog_detected(orthology_ambiguous)"
                         )
                         lowboundoutputfile.write(
-                            "\t" + "Homolog_detected(orthology_ambiguous)"
+                            "\tHomolog_detected(orthology_ambiguous)"
                         )
-                        pvaloutputfile.write(
-                            "\t" + "Homolog_detected(orthology_ambiguous)"
-                        )
+                        pvaloutputfile.write("\tHomolog_detected(orthology_ambiguous)")
 
             mloutputfile.write("\n")
             highboundoutputfile.write("\n")
             lowboundoutputfile.write("\n")
             pvaloutputfile.write("\n")
-            outputfileparams.write("\t" + str(a) + "\t" + str(b))
-            outputfileparams.write("\n")
+            outputfileparams.write(f"\t{a}\t{b}\n")
         else:
-            for j in range(0, len(rawdistances)):
-                prediction = round(func(rawdistances[j], a, b), 2)
-                mloutputfile.write("\t" + str(prediction))
-                highboundoutputfile.write("\t" + "analysis_error")
-                lowboundoutputfile.write("\t" + "analysis_error")
-                pvaloutputfile.write("\t" + "analysis_error")
+            for raw_distance in rawdistances:
+                prediction = round(func(raw_distance, a, b), 2)
+                mloutputfile.write("\t{prediction}")
+                highboundoutputfile.write("\tanalysis_error")
+                lowboundoutputfile.write("\tanalysis_error")
+                pvaloutputfile.write("\tanalysis_error")
             mloutputfile.write("\n")
             highboundoutputfile.write("\n")
-            outputfileparams.write(
-                "\t" + "analysis_error" + "\t" + "analysis_error" + "\n"
-            )
             lowboundoutputfile.write("\n")
             pvaloutputfile.write("\n")
+            outputfileparams.write("\tanalysis_error\tanalysis_error\n")
     else:
-        for j in range(0, len(rawdistances)):
-            mloutputfile.write("\t" + "not_enough_data")
-            highboundoutputfile.write("\t" + "not_enough_data")
-            lowboundoutputfile.write("\t" + "not_enough_data")
-            pvaloutputfile.write("\t" + "not_enough_data")
+        for _ in rawdistances:
+            mloutputfile.write("\tnot_enough_data")
+            highboundoutputfile.write("\tnot_enough_data")
+            lowboundoutputfile.write("\tnot_enough_data")
+            pvaloutputfile.write("\tnot_enough_data")
         mloutputfile.write("\n")
         highboundoutputfile.write("\n")
         lowboundoutputfile.write("\n")
         pvaloutputfile.write("\n")
-        outputfileparams.write(
-            "\t" + "not_enough_data" + "\t" + "not_enough_data" + "\n"
-        )
+        outputfileparams.write("\tnot_enough_data\tnot_enough_data\n")
+
 mloutputfile.close()
 highboundoutputfile.close()
 lowboundoutputfile.close()
