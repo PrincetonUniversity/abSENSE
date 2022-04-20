@@ -18,13 +18,13 @@
 abSENSE is a method that calculates the probability that a homolog of a given
 gene would fail to be detected by a homology search (using BLAST or a similar
 method) in a given species, even if the homolog were present and evolving
-normally. 
+normally.
 
 The result of this calculation informs how one interprets the result of a
 homology search failing to find homologs of a gene in some species. One
 possibility to explain such a result is that the gene is _actually absent_ from
 the genome in that species: a biological, and potentially interesting (e.g. if
-due to a gene loss or the birth of a new gene), result. 
+due to a gene loss or the birth of a new gene), result.
 
 A second explanation, often ignored, is that the homolog _is_ present in the
 genome of that species, but that the homology search merely lacks statistical
@@ -51,7 +51,7 @@ There, it is applied to the specific case of lineage-specific genes, for which
 homologs appear absent in all species outside of a narrow lineage. The method
 itself is applicable to any case in which a homolog appears absent (e.g. a
 single species missing a homolog that one might interpret as a gene loss), and
-likewise, this code is applicable to all such cases. 
+likewise, this code is applicable to all such cases.
 
 This is a rewrite of the [original repository](https://github.com/caraweisman/abSENSE/tree/c355c458e83722a0ffdf7284d4ea1f6f29ce205f)
 
@@ -67,7 +67,7 @@ the taxon at one time. It requires a minimum of two input files:
 
 i) A file containing the bitscores of homologs of each gene to be analyzed in
 at least three of the species (including the focal species itself, so two
-others). 
+others).
 
 ii) A file containing the N evolutionary distances, in substitutions/site,
 between the focal species and each other species. The distance between the
@@ -89,8 +89,8 @@ python Run_abSENSE.py \
     --distfile <distance_file> \
     --scorefile <score_file>
 ```
-    
-For example, to run abSENSE on the example fungal genes, type: 
+
+For example, to run abSENSE on the example fungal genes, type:
 
 ```
 python Run_abSENSE.py \
@@ -157,7 +157,7 @@ They are:
 
 `--out`: The prefix of the directory to which your results will be output.
 Default is the time at which you ran the analysis (to avoid overwriting of
-results). 
+results).
 
 `--Eval`: The E-value threshold to be used (above this value, homologs will
 be considered undetected). Default is 0.001 (fairly permissive).
@@ -171,7 +171,7 @@ detectability; this conversation technically requires knowledge of both the
 size of the database in which the search occurs (see below) and the length of
 the gene being searched. Because the conversion between these values and
 E-value is logarithmic, though, only fairly large changes in these values
-substantially affect results. 
+substantially affect results.
 
 Examples of such files containing the lengths of all S. cerevisiae and D.
 melanogaster genes can be found in Fungi\_Data/S\_cer\_Protein\_Lengths and
@@ -189,7 +189,7 @@ detectability; this conversation technically requires knowledge of both the
 size of the database in which the search occurs and the length of the gene
 being searched (see above). Because the conversion between these values and
 E-value is logarithmic, though, only fairly large changes in these values
-substantially affect results. 
+substantially affect results.
 
 Examples containing the lengths of all S. cerevisiae and D. melanogaster genes
 can be found in Fungi\_Data/Fungi_Database_Lengths and
@@ -204,7 +204,7 @@ obviously not the main use case, and is especially uninformative when those
 homologs and their bitscores have been used in the prediction itself (see
 below). May potentially be useful to see if a homolog in one species, although
 detected, seems to be behaving anomalously compared to those in other species
-(eg due to rate acceleration). 
+(eg due to rate acceleration).
 
 `--includeonly`: Allows you to restrict the species whose bitscores are used
 in predicting bitscores in other species. Mainly useful to do control-type
@@ -273,7 +273,7 @@ listed as "detected". The setting --predall will calculates this value for all
 species, even those for which a homolog was in fact detected. Here, the known
 bitscore (often used in the prediction process; see the option --includeonly)
 will be shown alongside the prediction. If the known bitscore was used in the
-fitting process, of course, these will usually be quite similar! 
+fitting process, of course, these will usually be quite similar!
 
 If not enough data for a gene was provided to generate a bitscore prediction
 (bitscores of homologs from at least three species are needed), the results
@@ -290,7 +290,7 @@ listed as "detected". The setting --predall will calculates this value for all
 species, even those for which a homolog was in fact detected. Here, the known
 bitscore (often used in the prediction process; see the option --includeonly)
 will be shown alongside the prediction. If the known bitscore was used in the
-fitting process, of course, these will usually be quite similar! 
+fitting process, of course, these will usually be quite similar!
 
 If not enough data for a gene was provided to generate a bitscore prediction
 (bitscores of homologs from at least three species are needed), the results
@@ -307,7 +307,7 @@ listed as "detected". The setting --predall will calculates this value for all
 species, even those for which a homolog was in fact detected. Here, the known
 bitscore (often used in the prediction process; see the option --includeonly)
 will be shown alongside the prediction. If the known bitscore was used in the
-fitting process, of course, these will usually be quite similar! 
+fitting process, of course, these will usually be quite similar!
 
 If not enough data for a gene was provided to generate a bitscore prediction
 (bitscores of homologs from at least three species are needed), the results
@@ -317,7 +317,7 @@ will read "not\_enough\_data".
 
 For each gene in the analysis, this contains the best-fit (maximum likelihood)
 values of the a and b parameters. (See Weisman et al 2020 for full
-explanation.) 
+explanation.)
 
 These a and b parameters are calculated from bitscores of homologs in species
 included in the prediction process. If the command line option --includeonly is
@@ -411,4 +411,4 @@ If your BLAST search is done on a nucleotide genome of the outgroup species via
 TBLASTN, the database length that you should use for each genome is 2N, where N
 is the genome length in nucleotides. (For a genome of N nucleotides, there are
 ~N/3 codons in it, which can be read in each of 6 possible reading frames, for
-a total of 6N/3 = 2N amino acids.) 
+a total of 6N/3 = 2N amino acids.)
