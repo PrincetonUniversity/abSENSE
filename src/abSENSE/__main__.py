@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import glob
 import inspect
 import math
@@ -11,132 +10,95 @@ import sys
 import warnings
 from datetime import datetime
 
+import click
 import numpy as np
+import pandas as pd
 from scipy import stats
 from scipy.optimize import curve_fit
 from scipy.stats import chi2
 
-from recorder import File_Recorder
+from abSENSE.parameters import AbsenseParameters
+from abSENSE.recorder import FileRecorder
 
 
-def main():
+@click.command(help="A method to interpred undetected homologs")
+@click.option('--distances', type=click.File('rt'), required=True,
+              help="tsv file containing pairwise evolutionary distances "
+              "between focal species and each of the other species.")
+@click.option('--bitscores', type=click.File('rt'), required=True,
+              help="tsv file containing bitscores between focal "
+              "species gene and orthologs in other species.")
+@click.option('--e-value', default=0.001,
+              help="E-value threshold. Default 0.001.")
+@click.option('--include-only', type=str,
+              help="Comma separated list of species to include in analysis.")
+@click.option('--gene-lengths', type=click.File('rt'),
+              help="tsv file containing amino acid lengths of all genes in "
+              "bitscores. Used to accurately calculate E-value threshold. "
+              "Default is 400aa for all genes. "
+              "Only large deviations will qualitatively affect results.")
+@click.option('--db-lengths', type=click.File('rt'),
+              help="tsv file containing amino acid size of each species' database."
+              "Used to accurately calculate E-value threshold. "
+              "Default is 400aa/gene * 20,000 genes = 8000000 for all species, "
+              "intended to be the size of an average proteome. "
+              "Only large deviations will significantly affect results.",
+              )
+@click.option('--predict-all', is_flag=True,
+              help="If set, predicts bitscores and P(detectable) of homologs "
+              "in all species, including those in which homologs were "
+              "detected. By default, will make predictions only for homologs "
+              "that seem to be absent.")
+@click.option('--out-dir', type=click.Path(file_okay=False),
+              help="Name of output directory. "
+              "Default is date and time when analysis was run.")
+def main(**args):
+    """CLI wrapper."""
     now = datetime.now()
-    starttime = now.strftime("%m.%d.%Y_%H.%M")
+    start_time = now.strftime("%m.%d.%Y_%H.%M")
 
-    parser = argparse.ArgumentParser(description="abSENSE arguments:")
+    params = AbsenseParameters(**args, start_time=start_time)
 
-    parser.add_argument(
-        "--distfile",
-        type=str,
-        required=True,
-        help="Required. Name of file containing pairwise evolutionary distances between focal species and each of the other species",
-    )
-    parser.add_argument(
-        "--scorefile",
-        type=str,
-        required=True,
-        help="Required. Name of file containing bitscores between focal species gene and orthologs in other species",
-    )
-    parser.add_argument(
-        "--Eval",
-        default=0.001,
-        type=float,
-        help="Optional. E-value threshold. Scientific notation (e.g. 10E-5) accepted. Default 0.001.",
-    )
-    parser.add_argument(
-        "--includeonly",
-        type=str,
-        help="Optional. Species whose orthologs' bitscores will be included in fit; all others will be omitted. Default is all species. Format as species names, exactly as in input files, separated by commas (no spaces).",
-    )
-    parser.add_argument(
-        "--genelenfile",
-        type=str,
-        help="Optional. File containing lengths (aa) of all genes to be analyzed. Used to accurately calculate E-value threshold. Default is 400aa for all genes. Only large deviations will qualitatively affect results.",
-    )
-    parser.add_argument(
-        "--dblenfile",
-        type=str,
-        help="Optional. File containing size (aa) of databases on which the anticipated homology searches will be performed. Species-specific. Used to accurately calculate E-value threshold. Default is 400aa/gene * 20,000 genes for each species, intended to be the size of an average proteome. Only large deviations will significantly affect results.",
-    )
-    parser.add_argument(
-        "--predall",
-        type=bool,
-        default=False,
-        help="Optional. True: Predicts bitscores and P(detectable) of homologs in all species, including those in which homologs were actually detected. Default is False: only make predictions for homologs that seem to be absent.",
-    )
-    parser.add_argument(
-        "--out",
-        type=str,
-        default="abSENSE_results_" + starttime,
-        help="Optional. Name of directory for output data. Default is date and time when analysis was run.",
-    )
-    args = parser.parse_args()
+    perform_analysis(params)
 
-    distancefilecheck = glob.glob(args.distfile)
-    if len(distancefilecheck) == 0:
-        sys.exit(
-            "Distance file with that name not found! Is it in the current directory? If not, specify directory information. Quitting. \n"
-        )
-    else:
-        distancefile = np.transpose(np.genfromtxt(args.distfile, dtype=str, delimiter="\t"))
 
-    scorefilecheck = glob.glob(args.scorefile)
-    if len(scorefilecheck) == 0:
-        sys.exit(
-            "Bitscore file with that name not found! Is it in the current directory? If not, specify directory information. Quitting. \n"
-        )
-    else:
-        bitscores = np.genfromtxt(args.scorefile, dtype=str, delimiter="\t")
+def perform_analysis(params: AbsenseParameters):
+    """Wrapper for unit testing."""
+    distancefile = np.transpose(np.genfromtxt(params.distances, dtype=str, delimiter="\t"))
+    bitscores = np.genfromtxt(params.bitscores, dtype=str, delimiter="\t")
 
     speciesorder = distancefile[0]
     rawdistances = distancefile[1].astype(float)
     genelist = bitscores[1:, 0]  # skip header
 
-    ethresh = args.Eval
-
-    if args.genelenfile is None:
+    if params.gene_lengths is None:
         genelengthfilefound = False
-        defgenelen = float(400)
+        defgenelen = params.default_gene_length
     else:
+        genelengths = np.genfromtxt(params.gene_lengths, dtype=str, delimiter="\t")
         genelengthfilefound = True
 
-    if args.dblenfile is None:
+    if params.db_lengths is None:
         speciesdblengthfilefound = False
-        defdbsize = float(8000000)
+        defdbsize = params.default_db_length
         speciesdblengths = np.transpose(
             np.vstack((speciesorder, [float(defdbsize)] * len(speciesorder)))
         )
     else:
+        speciesdblengths = np.genfromtxt(params.db_lengths, dtype=str, delimiter="\t")
         speciesdblengthfilefound = True
 
-    if genelengthfilefound:
-        genelengthfilecheck = glob.glob(args.genelenfile)
-        if len(genelengthfilecheck) != 1:
-            sys.exit(
-                "Gene length file with that name not found! Is it in the current directory? If not, specify directory information. Quitting. \n"
-            )
-        else:
-            genelengths = np.genfromtxt(args.genelenfile, dtype=str, delimiter="\t")
-
-    if speciesdblengthfilefound:
-        speciesdblengthfilecheck = glob.glob(args.dblenfile)
-        if len(speciesdblengthfilecheck) != 1:
-            sys.exit(
-                "Species database size file with that name not found! Is it in the current directory? If not, specify directory information. Quitting. \n"
-            )
-        else:
-            speciesdblengths = np.genfromtxt(args.dblenfile, dtype=str, delimiter="\t")
 
     # Determine order of species in the bitscore file, in case they're not the same as in the distance file, from which they're extracted
     # Also determine the locations in the ordering to be used of the species to omit from curve fit, if any
     ordervec = (
         []
     )  # first index is location of first species in speciesorder in the file; and so on
-    if args.includeonly is None:
+    if params.include_only is None:
         pred_specs = []
         pred_spec_locs = []
     else:
-        pred_specs = re.split(",", args.includeonly)
+        pred_specs = re.split(",", params.include_only)
         pred_spec_locs = []
 
     for i, species in enumerate(speciesorder):
@@ -148,7 +110,7 @@ def main():
                 if species in pred_specs:
                     pred_spec_locs.append(i)
         if not found:
-            sys.exit(
+            raise ValueError(
                 "One or more species names in header of bitscore file do not "
                 "match species names in header of distance file! "
                 f"The first I encountered was {species}. Quitting. \n"
@@ -173,26 +135,22 @@ def main():
                 found = True
         if not found:
             if speciesdblengthfilefound:
-                sys.exit(
+                raise ValueError(
                     "One or more species names in your database size file do not "
                     "match species names in distance file! The first I "
                     f"encountered was {species}. Quitting. \n"
                 )
 
-    with File_Recorder(
-            args.out,
+    with FileRecorder(
+            params,
             [speciesorder[i] for i in invordervec],
-            args.predall,
     ).open() as recorder:
 
         # Ignore warning that sometimes happen as a result of stochastic 
         # sampling but that doesn't affect overall computation
         warnings.filterwarnings("ignore", message="invalid value encountered in sqrt")
 
-        now = datetime.now()
-        starttime = now.strftime("%m.%d.%Y_%H.%M")
-
-        recorder.write_info(starttime, args, defgenelen, defdbsize, pred_specs)
+        recorder.write_info(params, pred_specs)
         recorder.write_headers()
 
         print("Running!")
@@ -221,7 +179,7 @@ def main():
                         lengthfound = True
                         break
                 if not lengthfound:
-                    sys.exit(
+                    raise ValueError(
                         f"Gene {gene} not found in specified " "gene length file! Quitting \n"
                     )
             else:
@@ -273,7 +231,7 @@ def main():
             testavals, testbvals = parout
             for j in range(0, len(rawdistances)):
                 bitthresh = -1 * math.log(
-                    ethresh / (seqlen * speciestotallengths[invordervec[j]]), 2
+                    params.e_value / (seqlen * speciestotallengths[invordervec[j]]), 2
                 )
 
                 prediction = round(func(rawdistances[invordervec[j]], a, b), 2)

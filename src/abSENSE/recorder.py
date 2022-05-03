@@ -3,15 +3,17 @@ from contextlib import contextmanager
 import os
 from datetime import datetime
 
+from abSENSE.parameters import AbsenseParameters
+
 
 # TODO once analysis is contained in it's own object, refactor to recorder subclasses
-class File_Recorder:
+class FileRecorder:
     """Contains file handles to record absense analysis results as text files."""
-    def __init__(self, output_directory, species, predict_all):
-        os.makedirs(output_directory, exist_ok=True)
-        self.output_dir = output_directory
+    def __init__(self, params, species):
+        os.makedirs(params.output_directory, exist_ok=True)
+        self.output_dir = params.output_directory
         self.species = species
-        self.predict_all = predict_all
+        self.predict_all = params.predict_all
         self.filenames = {
             'bitscores': 'predicted_bitscores.tsv',
             'low': '99PI_lower_prediction.tsv',
@@ -74,26 +76,23 @@ class File_Recorder:
 
     def write_info(
         self,
-        start_time,
-        args,
-        defgenelen,
-        defdbsize,
+        params: AbsenseParameters,
         pred_species,
     ):
         """Write the run information to the info file."""
-        self._info_file.write(f"abSENSE analysis run on {start_time}\n")
-        self._info_file.write(f"Input bitscore file: {args.scorefile}\n")
-        self._info_file.write(f"Input distance file: {args.distfile}\n")
+        self._info_file.write(f"abSENSE analysis run on {params.start_time}\n")
+        self._info_file.write(f"Input bitscore file: {params.bitscores}\n")
+        self._info_file.write(f"Input distance file: {params.distances}\n")
 
-        if args.genelenfile is None:
-            self._info_file.write(f"Gene length (for all genes): {defgenelen} (default)\n")
+        if params.gene_lengths is None:
+            self._info_file.write(f"Gene length (for all genes): {params.default_gene_length} (default)\n")
         else:
-            self._info_file.write(f"Gene length file: {args.genelenfile}\n")
+            self._info_file.write(f"Gene length file: {params.gene_lengths}\n")
 
-        if args.dblenfile is None:
-            self._info_file.write(f"Database length (for all species): {defdbsize} (default)\n")
+        if params.db_lengths is None:
+            self._info_file.write(f"Database length (for all species): {params.default_db_length} (default)\n")
         else:
-            self._info_file.write(f"Database length file: {args.dblenfile}\n")
+            self._info_file.write(f"Database length file: {params.db_lengths}\n")
 
         self._info_file.write("Species used in fit: ")
         if len(pred_species) == 0:
@@ -102,7 +101,7 @@ class File_Recorder:
             self._info_file.write(' '.join(pred_species))
         self._info_file.write("\n")
 
-        self._info_file.write(f"E-value threshold: {args.Eval}\n")
+        self._info_file.write(f"E-value threshold: {params.e_value}\n")
 
     def write_gene(self, gene):
         """Record the gene column for all files."""

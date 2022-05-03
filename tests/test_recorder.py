@@ -1,21 +1,8 @@
-from abSENSE.recorder import File_Recorder
+from abSENSE.recorder import FileRecorder
+from abSENSE.parameters import AbsenseParameters
 import pytest
 from io import StringIO
 import itertools
-
-
-@pytest.fixture()
-def faked_recorder(mocker):
-    mocker.patch('abSENSE.recorder.os.makedirs')
-    recorder = File_Recorder('.', ['s1', 's2', 's3'], predict_all=True)
-    # replace files with stringIO for easier testing
-    files = {}
-    def new_stringIO(*args, **kwargs):
-        result = StringIO()
-        files[args[0]] = result
-        return result
-    mocker.patch('abSENSE.recorder.open', side_effect=new_stringIO)
-    return recorder, files
 
 
 def test_open(faked_recorder):
@@ -71,34 +58,34 @@ def test_write_headers(faked_recorder):
 @pytest.mark.parametrize('genelenfile', [None, 'gene len file'])
 @pytest.mark.parametrize('dblenfile', [None, 'db len file'])
 @pytest.mark.parametrize('pred_species', [[], ['a', 'b', 'c'], ['a']])
-def test_write_info(faked_recorder, mocker, genelenfile, dblenfile, pred_species):
+def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
     rec, files = faked_recorder
 
-    args = mocker.MagicMock()
-    args.scorefile = 'score file'
-    args.distfile = 'distance file'
-    args.genelenfile = genelenfile
-    args.dblenfile = dblenfile
-    args.Eval = 'e value'
+    params = AbsenseParameters(
+        distances='distance file',
+        bitscores='score file',
+        e_value='e value',
+        predict_all=False,
+        include_only=None,
+        gene_lengths=genelenfile,
+        db_lengths=dblenfile,
+        out_dir=None,
+        start_time='start time',
+    )
 
     with rec.open() as recorder:
-        recorder.write_info('start time',
-                            args,
-                            'default gene length',
-                            'default db size',
-                            pred_species=pred_species,
-                            )
+        recorder.write_info(params, pred_species=pred_species)
 
         for key, file in files.items():
             if key != './run_info.txt':
                 assert file.getvalue() == ''
                 continue
 
-            genelen = "Gene length (for all genes): default gene length (default)\n"
+            genelen = "Gene length (for all genes): 400 (default)\n"
             if genelenfile is not None:
                 genelen = f"Gene length file: {genelenfile}\n"
 
-            dblen = "Database length (for all species): default db size (default)\n"
+            dblen = "Database length (for all species): 8000000 (default)\n"
             if dblenfile is not None:
                 dblen = f"Database length file: {dblenfile}\n"
 
