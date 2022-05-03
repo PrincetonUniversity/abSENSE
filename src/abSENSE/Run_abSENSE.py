@@ -189,14 +189,17 @@ def main():
         # sampling but that doesn't affect overall computation
         warnings.filterwarnings("ignore", message="invalid value encountered in sqrt")
 
-        recorder.write_info(args, defgenelen, defdbsize, pred_specs)
+        now = datetime.now()
+        starttime = now.strftime("%m.%d.%Y_%H.%M")
+
+        recorder.write_info(starttime, args, defgenelen, defdbsize, pred_specs)
         recorder.write_headers()
 
         print("Running!")
 
         for i, gene in enumerate(genelist):
             # report current position and gene name
-            print(f"gene {i} out of {len(genelist)}: {gene}")
+            print(f"gene {i+1} out of {len(genelist)}: {gene}")
 
             recorder.write_gene(gene)
 
@@ -225,10 +228,8 @@ def main():
                 seqlen = float(defgenelen)
 
             # put scores for current gene in bitscore file in right order
-            orderedscores = []
-            for index in ordervec:  # ordervec starts at 1
-                # i + 1 because header skipped in gene list formation, so one behind now
-                orderedscores.append(bitscores[i + 1][index])
+            # i + 1 because header skipped in gene list formation, so one behind now
+            orderedscores = [bitscores[i+1][index] for index in ordervec]
 
             # append score of species and corresponding distance of species to gene-specific distance, score vectors if:
             # score isn't 0 (can't distinguish absence from loss from bad data etc)
@@ -280,9 +281,9 @@ def main():
                     testavals, testbvals, rawdistances[invordervec[j]], bitthresh
                 )
 
-                is_truncated = rawdistances[invordervec[j]] in truncdistances
+                is_considered = rawdistances[invordervec[j]] in truncdistances
                 realscore = 0
-                if is_truncated:
+                if is_considered:
                     realscore = genebitscores[
                             truncdistances.index(rawdistances[invordervec[j]])
                         ]
@@ -293,7 +294,7 @@ def main():
                     low=lowprediction,
                     pval=pval,
                     realscore=realscore,
-                    is_truncated=is_truncated,
+                    is_considered=is_considered,
                     is_ambiguous=rawdistances[invordervec[j]] in ambigdists,
                 )
 

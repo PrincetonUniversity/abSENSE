@@ -46,9 +46,11 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest >=6",
+    "pytest-mock>=3.7.0",
 ]
 dev = [
     "pytest >=6",
+    "pytest-mock>=3.7.0",
 ]
 docs = [
     "Sphinx>=4.0",

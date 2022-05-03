@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 
+# TODO once analysis is contained in it's own object, refactor to recorder subclasses
 class File_Recorder:
     """Contains file handles to record absense analysis results as text files."""
     def __init__(self, output_directory, species, predict_all):
@@ -73,15 +74,14 @@ class File_Recorder:
 
     def write_info(
         self,
+        start_time,
         args,
         defgenelen,
         defdbsize,
         pred_species,
     ):
         """Write the run information to the info file."""
-        now = datetime.now()
-        starttime = now.strftime("%m.%d.%Y_%H.%M")
-        self._info_file.write(f"abSENSE analysis run on {starttime}\n")
+        self._info_file.write(f"abSENSE analysis run on {start_time}\n")
         self._info_file.write(f"Input bitscore file: {args.scorefile}\n")
         self._info_file.write(f"Input distance file: {args.distfile}\n")
 
@@ -138,10 +138,10 @@ class File_Recorder:
         low,
         pval,
         realscore,
-        is_truncated,
+        is_considered,
         is_ambiguous,
     ):
-        """Record the fit values for this gene,species."""
+        """Record the fit values for this gene, species."""
 
         high = round(high, 2)
         low = round(low, 2)
@@ -150,7 +150,7 @@ class File_Recorder:
         site_type = ''
         additional_score = ''
 
-        if is_truncated:
+        if is_considered:
             site_type = 'Ortholog_detected'
             additional_score = f':{realscore}'
         elif is_ambiguous:
