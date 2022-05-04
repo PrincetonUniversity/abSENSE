@@ -61,12 +61,17 @@ def test_write_headers(faked_recorder):
 def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
     rec, files = faked_recorder
 
+    include_only = None if pred_species == [] else ','.join(pred_species)
+    dist = StringIO()
+    dist.name = 'distance file'
+    score = StringIO()
+    score.name = 'score file'
     params = AbsenseParameters(
-        distances='distance file',
-        bitscores='score file',
+        distances=dist,
+        bitscores=score,
         e_value='e value',
         predict_all=False,
-        include_only=None,
+        include_only=include_only,
         gene_lengths=genelenfile,
         db_lengths=dblenfile,
         out_dir=None,
@@ -74,7 +79,7 @@ def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
     )
 
     with rec.open() as recorder:
-        recorder.write_info(params, pred_species=pred_species)
+        recorder.write_info(params)
 
         for key, file in files.items():
             if key != './run_info.txt':

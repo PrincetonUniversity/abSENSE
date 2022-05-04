@@ -13,10 +13,32 @@ def faked_recorder(mocker, default_params):
     recorder = FileRecorder(default_params, ['s1', 's2', 's3'])
     # replace files with stringIO for easier testing
     files = {}
+
     def new_stringIO(*args, **kwargs):
         result = StringIO()
+        result.name = args[0]
         files[args[0]] = result
         return result
+
+    mocker.patch('abSENSE.recorder.open', side_effect=new_stringIO)
+    return recorder, files
+
+
+@pytest.fixture()
+def faked_recorder_non_closing(mocker, default_params):
+    mocker.patch('abSENSE.recorder.os.makedirs')
+    default_params.out_dir = '.'
+    recorder = FileRecorder(default_params, ['s1', 's2', 's3'])
+    # replace files with stringIO for easier testing
+    files = {}
+
+    def new_stringIO(*args, **kwargs):
+        result = StringIO()
+        result.close = lambda: None
+        result.name = args[0]
+        files[args[0]] = result
+        return result
+
     mocker.patch('abSENSE.recorder.open', side_effect=new_stringIO)
     return recorder, files
 
@@ -40,6 +62,7 @@ def quick_bitscores():
 @pytest.fixture()
 def quick_distances():
     return (
+        '#Species\tDistance\n'
         'S_cer\t0\n'
         'S_par\t0.051\n'
         'S_mik\t0.088\n'
@@ -55,11 +78,60 @@ def quick_distances():
     )
 
 
+@pytest.fixture()
+def fungi_database_lengths():
+    return (
+        '#Species\tDBsize\n'
+        'A_nidulans\t5073867\n'
+        'Y_lipolytica\t3139837\n'
+        'A_gossyppi\t2335136\n'
+        'K_lactis\t2462503\n'
+        'S_pombe\t2381887\n'
+        'S_castellii\t2768407\n'
+        'S_mik\t2612415\n'
+        'S_par\t2606124\n'
+        'S_kud\t2603233\n'
+        'S_cer\t2615464\n'
+        'S_bay\t2595487\n'
+        'K_waltii\t2424992\n'
+    )
+
+
+@pytest.fixture()
+def fungi_gene_lengths():
+    return (
+        '#GeneID\tGeneLength\n'
+        'NP_001018029.1\t66\n'
+        'NP_001018030.1\t360\n'
+        'NP_001018031.2\t113\n'
+        'NP_001018032.1\t52\n'
+        'NP_001018033.3\t92\n'
+        'NP_001027023.1\t163\n'
+        'NP_001027534.1\t73\n'
+        'NP_001032571.3\t67\n'
+        'NP_001032572.1\t78\n'
+        'NP_001032573.1\t79\n'
+        'NP_010181.2\t101\n'
+        'NP_009362.1\t102\n'
+        'NP_014555.1\t103\n'
+        'NP_116682.3\t104\n'
+        'NP_011284.1\t105\n'
+        'NP_011878.1\t106\n'
+        'NP_013320.1\t107\n'
+        'NP_014160.2\t108\n'
+        'NP_014890.1\t109\n'
+    )
+
+
 @pytest.fixture
 def default_params(quick_bitscores, quick_distances):
+    distances = StringIO(quick_distances)
+    distances.name = 'distances'
+    bitscores = StringIO(quick_bitscores)
+    bitscores.name = 'bitscores'
     return AbsenseParameters(
-        distances=StringIO(quick_distances),
-        bitscores=StringIO(quick_bitscores),
+        distances=distances,
+        bitscores=bitscores,
         e_value=0.001,
         predict_all=False,
         include_only=None,

@@ -63,6 +63,9 @@ docs = [
 [project.urls]
 homepage = "https://github.com/PrincetonUniversity/abSENSE"
 
+[project.scripts]
+absense = "abSENSE.__main__:main"
+
 
 [tool.pdm.dev-dependencies]
 devtest = ["pytest"]

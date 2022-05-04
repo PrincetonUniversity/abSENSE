@@ -77,12 +77,11 @@ class FileRecorder:
     def write_info(
         self,
         params: AbsenseParameters,
-        pred_species,
     ):
         """Write the run information to the info file."""
         self._info_file.write(f"abSENSE analysis run on {params.start_time}\n")
-        self._info_file.write(f"Input bitscore file: {params.bitscores}\n")
-        self._info_file.write(f"Input distance file: {params.distances}\n")
+        self._info_file.write(f"Input bitscore file: {params.bitscores.name}\n")
+        self._info_file.write(f"Input distance file: {params.distances.name}\n")
 
         if params.gene_lengths is None:
             self._info_file.write(f"Gene length (for all genes): {params.default_gene_length} (default)\n")
@@ -95,10 +94,10 @@ class FileRecorder:
             self._info_file.write(f"Database length file: {params.db_lengths}\n")
 
         self._info_file.write("Species used in fit: ")
-        if len(pred_species) == 0:
+        if params.include_only is None:
             self._info_file.write("All (default)")
         else:
-            self._info_file.write(' '.join(pred_species))
+            self._info_file.write(' '.join(params.include_only.split(',')))
         self._info_file.write("\n")
 
         self._info_file.write(f"E-value threshold: {params.e_value}\n")
