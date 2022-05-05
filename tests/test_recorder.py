@@ -1,6 +1,7 @@
 from abSENSE.recorder import FileRecorder
 from abSENSE.parameters import AbsenseParameters
 import pytest
+import pandas as pd
 from io import StringIO
 import itertools
 
@@ -80,6 +81,7 @@ def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
         bitscores=score,
         e_value='e value',
         predict_all=False,
+        plot_all=False,
         include_only=include_only,
         gene_lengths=gen_lens,
         db_lengths=db_lens,
@@ -277,3 +279,29 @@ def test_write_result(faked_recorder, predall, highs, predictions,
 
     for file in test_files:
         file.close()
+
+def test_plot(default_params, mocker):
+    mocker.patch('abSENSE.recorder.os.makedirs')
+    default_params.plot_all = True
+    recorder = FileRecorder(default_params, [])
+    result = StringIO(
+        ',distance,score,p_values,low_interval,high_interval,ambiguous,in_fit,prediction\n'
+        'S_cer,0.0,2284.0,0.0,2260.2,2467.68,False,True,2359.91\n'
+        'S_par,0.05,2254.0,0.0,2187.99,2378.63,False,True,2279.92\n'
+        'S_mik,0.09,2234.0,0.0,2136.21,2316.95,False,True,2223.59\n'
+        'S_kud,0.104,2197.0,0.0,2113.86,2291.22,False,True,2199.67\n'
+        'S_bay,0.108,2200.0,0.0,2108.34,2284.71,False,True,2193.73\n'
+        'S_castellii,0.36,1895.0,0.0,1765.16,1928.92,False,True,1846.31\n'
+        'K_waltii,0.49,1767.0,0.0,1600.4,1778.84,False,True,1689.81\n'
+        'A_gossyppi,0.52,1736.0,0.0,1571.01,1753.6,False,True,1662.61\n'
+        'K_lactis,0.56,1691.0,0.0,1525.83,1711.85,False,True,1619.34\n'
+        'A_nidulans,0.9,1099.0,0.0,1164.61,1395.01,False,True,1281.56\n'
+        'S_pombe,0.92,1194.0,0.0,1147.89,1379.32,False,True,1265.21\n'
+        'Y_lipolytica,0.95,1297.0,0.0,1119.85,1353.19,False,True,1238.13\n'
+    )
+    df = pd.read_csv(result, index_col=0)
+
+    result = StringIO()
+    recorder.plot('GENE', df, 2359.9123, 0.6761,
+                  correlation=0.9, bit_threshold=40, outfile=result)
+    assert 'DOCTYPE svg' in result.getvalue()

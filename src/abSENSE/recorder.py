@@ -4,9 +4,9 @@ import os
 from datetime import datetime
 
 from abSENSE.parameters import AbsenseParameters
+from abSENSE.plotting import FitPlot
 
 
-# TODO once analysis is contained in it's own object, refactor to recorder subclasses
 class FileRecorder:
     """Contains file handles to record absense analysis results as text files."""
     def __init__(self, params, species):
@@ -14,6 +14,9 @@ class FileRecorder:
         self.output_dir = params.output_directory
         self.species = species
         self.predict_all = params.predict_all
+        self.plot_all = params.plot_all
+        if self.plot_all:
+            os.makedirs(f'{self.output_dir}/plots', exist_ok=True)
         self.filenames = {
             'bitscores': 'predicted_bitscores.tsv',
             'low': '99PI_lower_prediction.tsv',
@@ -185,5 +188,31 @@ class FileRecorder:
         for file in self._files.values():
             file.write('\n')
 
-    def plot(self, gene, result, a_fit, b_fit):
-        pass
+    def plot(self, gene, result, a_fit, b_fit, correlation, bit_threshold, outfile=None):
+        if self.plot_all is False:
+            return
+
+        outfile = f'{self.output_dir}/plots/{gene}.svg' if outfile is None else outfile
+
+        plot = FitPlot()
+        plot.title(gene, a_fit, b_fit, correlation)
+
+        plot.scores(result.distance, result.score)
+
+        plot.fit(result.distance,
+                 result.prediction,
+                 high=result.high_interval,
+                 low=result.low_interval,
+                 bit_threshold=bit_threshold,
+                 )
+
+        plot.set_axes(result.distance, result.index)
+        # test if the species is also ambiguous, that takes precedence
+        plot.highlight_not_in_fit(result.distance, (result.in_fit | result.ambiguous))
+        plot.highlight_ambiguous(result.ambiguous)
+        plot.show_label(
+            any_not_in_fit=not (result.in_fit | result.ambiguous).all(),
+            any_ambiguous=result.ambiguous.any(),
+        )
+
+        plot.save(outfile)

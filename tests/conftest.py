@@ -134,6 +134,7 @@ def default_params(quick_bitscores, quick_distances):
         bitscores=bitscores,
         e_value=0.001,
         predict_all=False,
+        plot_all=False,
         include_only=None,
         gene_lengths=None,
         db_lengths=None,

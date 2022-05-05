@@ -13,6 +13,7 @@ class AbsenseParameters:
     gene_lengths: Optional[TextIO]
     db_lengths: Optional[TextIO]
     predict_all: bool
+    plot_all: bool
     out_dir: Optional[str]
     start_time: str
 

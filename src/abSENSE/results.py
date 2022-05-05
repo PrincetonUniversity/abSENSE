@@ -40,17 +40,29 @@ class NotEnoughDataResult(FitResult):
 
 
 class SampledResult(FitResult):
-    def __init__(self, gene, result, a_fit, b_fit):
+    def __init__(self, gene, result, a_fit, b_fit, bit_threshold, correlation):
         super().__init__(gene)
         self.result = result
         self.a_fit = a_fit
         self.b_fit = b_fit
+        self.bit_threshold = bit_threshold
+        self.correlation = correlation
 
     def record_to(self, recorder: FileRecorder):
         super().record_to(recorder)
+        recorder.plot(
+            gene=self.gene,
+            result=self.result,
+            a_fit=self.a_fit,
+            b_fit=self.b_fit,
+            correlation=self.correlation,
+            bit_threshold=self.bit_threshold,
+        )
+
+
         recorder.write_params(self.a_fit, self.b_fit)
 
-        for _, row in self.result.iterrows():
+        for _, row in self.result.round(2).iterrows():
             recorder.write_result(
                 prediction=row.prediction,
                 high=row.high_interval,
@@ -62,8 +74,6 @@ class SampledResult(FitResult):
             )
 
         recorder.finalize_row()
-
-        recorder.plot(self.gene, self.result, self.a_fit, self.b_fit)
 
     def status(self):
         return ''

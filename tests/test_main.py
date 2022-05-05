@@ -2,13 +2,18 @@ from abSENSE.parameters import AbsenseParameters
 import abSENSE.__main__ as main
 from io import StringIO
 import pytest
+import pandas as pd
+from pandas.testing import assert_frame_equal as afe
 
 
 def test_defaults(faked_recorder_non_closing, default_params):
     _, files = faked_recorder_non_closing
     main.perform_analysis(default_params)
 
-    assert files['./parameters.tsv'].getvalue() == (
+
+    files['./parameters.tsv'].seek(0)
+    result = pd.read_csv(files['./parameters.tsv'], delimiter='\t', comment='#')
+    expected = pd.read_csv(StringIO( 
         '# the best-fit parameters (performed using only bitscores from species not omitted from the fit; see run info file) for a and b for each gene\n'
         'Gene\ta\tb\n'
         'NP_010181.2\t2359.910340705106\t0.676126045968598\n'
@@ -20,7 +25,8 @@ def test_defaults(faked_recorder_non_closing, default_params):
         'NP_013320.1\t1552.4815439696647\t5.120090782287544\n'
         'NP_014160.2\t968.5487558750334\t0.9669086263255712\n'
         'NP_014890.1\t383.70820281955355\t4.700780867702744\n'
-    )
+    ), delimiter='\t', comment='#')
+    afe(result, expected)
 
     assert files['./predicted_bitscores.tsv'].getvalue() == (
         '# maximum likelihood bitscore predictions for each tested gene in each species\n'

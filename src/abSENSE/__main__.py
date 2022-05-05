@@ -14,7 +14,7 @@ from abSENSE.parameters import AbsenseParameters
 from abSENSE.recorder import FileRecorder
 
 
-@click.command(help="A method to interpred undetected homologs")
+@click.command(help="A method to interpret undetected homologs")
 @click.option('--distances', type=click.File('rt'), required=True,
               help="tsv file containing pairwise evolutionary distances "
               "between focal species and each of the other species.")
@@ -42,6 +42,9 @@ from abSENSE.recorder import FileRecorder
               "in all species, including those in which homologs were "
               "detected. By default, will make predictions only for homologs "
               "that seem to be absent.")
+@click.option('--plot-all', is_flag=True,
+              help="If set, will plot fitting results for each gene present in "
+              "the bitscores file. By default, will not produce plots.")
 @click.option('--out-dir', type=click.Path(file_okay=False),
               help="Name of output directory. "
               "Default is date and time when analysis was run.")

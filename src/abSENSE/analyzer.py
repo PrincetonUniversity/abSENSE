@@ -134,22 +134,28 @@ class AbsenseAnalyzer():
         if np.isinf(covariance).any():
             return ErrorResult(gene, predictions=predictions['distance'])
 
+        bit_threshold = self.bit_threshold(gene_length)
+        global_threshold = bit_threshold.mean()['bit_threshold']
+        correlation = self.correlation(self.distances, data.score)
+
         intervals = self.find_confidence_interval(
             self.sample_parameters(a_fit, b_fit, covariance),
-            self.bit_threshold(gene_length),
+            bit_threshold,
         )
 
         result = data.join(intervals).assign(
             ambiguous=ambiguous,
             in_fit=in_fit,
             prediction=predictions,
-        ).round(2)
+        )
 
         return SampledResult(
             gene,
             result=result,
             a_fit=a_fit,
             b_fit=b_fit,
+            bit_threshold=global_threshold,
+            correlation=correlation,
         )
 
 
@@ -165,6 +171,13 @@ class AbsenseAnalyzer():
     def bit_threshold(self, gene_length):
         result = np.log2(gene_length) + np.log2(self.db_lengths) - np.log2(self.e_value)
         return result.rename(columns={'length': 'bit_threshold'})
+
+    def correlation(self, distance, scores):
+        data = distance.assign(score=scores)
+        data = data[data.score > 0]
+        _, _, correlation, _, _ = scipy.stats.linregress(data.distance, np.log(data.score))
+        return correlation
+
 
     def find_confidence_interval(self, sampled_parameters, bit_threshold):
         """Gives an empirical estimate of the prediction interval.

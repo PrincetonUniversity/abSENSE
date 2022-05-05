@@ -108,6 +108,8 @@ def test_fit_normal(analyzer_with_files):
     assert result.gene == 'NP_010181.2'
     assert result.a_fit == pytest.approx(2359.91, abs=1e-2)
     assert result.b_fit == pytest.approx(0.67612, abs=1e-4)
+    assert result.correlation == pytest.approx(-0.976, abs=1e-2)
+    assert result.bit_threshold == pytest.approx(39.55, abs=1e-2)
 
 
 def test_sample_parameters(analyzer_with_files):
