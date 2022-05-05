@@ -1,13 +1,5 @@
 from __future__ import annotations
 
-import glob
-import inspect
-import math
-import os
-import random
-import re
-import sys
-import warnings
 from datetime import datetime
 
 import click
@@ -75,7 +67,10 @@ def perform_analysis(params: AbsenseParameters):
         print("Running!")
 
         for i, result in enumerate(analyzer.fit_genes()):
-            print(f"gene {i+1} out of {total_genes}: {result.gene}")
+            status = result.status()
+            if status != '':
+                status = '\t-- ' + status
+            print(f"gene {i+1} out of {total_genes}: {result.gene}{status}")
 
             result.record_to(recorder)
 

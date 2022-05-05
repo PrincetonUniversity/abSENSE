@@ -86,12 +86,13 @@ class FileRecorder:
         if params.gene_lengths is None:
             self._info_file.write(f"Gene length (for all genes): {params.default_gene_length} (default)\n")
         else:
-            self._info_file.write(f"Gene length file: {params.gene_lengths}\n")
+            self._info_file.write(f"Gene length file: {params.gene_lengths.name}\n")
 
+        self._info_file.write("Database length ")
         if params.db_lengths is None:
-            self._info_file.write(f"Database length (for all species): {params.default_db_length} (default)\n")
+            self._info_file.write(f"(for all species): {params.default_db_length} (default)\n")
         else:
-            self._info_file.write(f"Database length file: {params.db_lengths}\n")
+            self._info_file.write(f"file: {params.db_lengths.name}\n")
 
         self._info_file.write("Species used in fit: ")
         if params.include_only is None:
@@ -183,3 +184,6 @@ class FileRecorder:
         """Write newlines to all files."""
         for file in self._files.values():
             file.write('\n')
+
+    def plot(self, gene, result, a_fit, b_fit):
+        pass

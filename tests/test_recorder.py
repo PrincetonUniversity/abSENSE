@@ -66,14 +66,23 @@ def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
     dist.name = 'distance file'
     score = StringIO()
     score.name = 'score file'
+    db_lens = None
+    if dblenfile is not None:
+        db_lens = StringIO()
+        db_lens.name = dblenfile
+    gen_lens = None
+    if genelenfile is not None:
+        gen_lens = StringIO()
+        gen_lens.name = genelenfile
+    score.name = 'score file'
     params = AbsenseParameters(
         distances=dist,
         bitscores=score,
         e_value='e value',
         predict_all=False,
         include_only=include_only,
-        gene_lengths=genelenfile,
-        db_lengths=dblenfile,
+        gene_lengths=gen_lens,
+        db_lengths=db_lens,
         out_dir=None,
         start_time='start time',
     )

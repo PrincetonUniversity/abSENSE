@@ -11,6 +11,9 @@ class FitResult():
     def record_to(self, recorder: FileRecorder):
         recorder.write_gene(self.gene)
 
+    def status(self):
+        return ''
+
 class ErrorResult(FitResult):
     def __init__(self, gene, predictions=None):
         super().__init__(gene)
@@ -20,6 +23,9 @@ class ErrorResult(FitResult):
         super().record_to(recorder)
         recorder.analysis_error(predictions=self.predictions)
 
+    def status(self):
+        return 'Analysis Error'
+
 
 class NotEnoughDataResult(FitResult):
     def __init__(self, gene):
@@ -28,6 +34,9 @@ class NotEnoughDataResult(FitResult):
     def record_to(self, recorder: FileRecorder):
         super().record_to(recorder)
         recorder.not_enough_data()
+
+    def status(self):
+        return 'Not Enough Data'
 
 
 class SampledResult(FitResult):
@@ -53,3 +62,8 @@ class SampledResult(FitResult):
             )
 
         recorder.finalize_row()
+
+        recorder.plot(self.gene, self.result, self.a_fit, self.b_fit)
+
+    def status(self):
+        return ''

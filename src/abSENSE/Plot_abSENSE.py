@@ -15,7 +15,6 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 from cycler import cycler
-from dill.source import getsource
 from matplotlib.patches import Patch
 from scipy import stats
 from scipy.optimize import curve_fit
@@ -241,15 +240,6 @@ def PI_find(testavals, testbvals, currx):
     mean = np.mean(PIsamples)
     # compute std dev of sample
     std = np.std(PIsamples)
-
-    # empirically determine, from sampled scores, how many are below detectability threshold
-    undetcount = 0
-    for i in range(0, len(PIsamples)):
-        if PIsamples[i] < bitthresh:
-            undetcount = undetcount + 1
-
-    # compute fraction of sampled scores below threshold = P(undetected) = empriical "p-value"
-    emppval = float(undetcount) / float(len(PIsamples))
 
     # calculate this analytically from std estimate
     pval = stats.norm.cdf(bitthresh, mean, std)
@@ -508,10 +498,7 @@ finalhandle = handlelist[:-1] + [addedambighandle] + [handlelist[-1]]
 finallabel = labelist[:-1] + [addedambiglabel] + [labelist[-1]]
 
 
-# handlelist = [handles[idx] for idx in order].insert(len([handles[idx] for idx in order])-2, addedambighandle)
-# labelist = [labels[idx] for idx in order].insert(len([labels[idx] for idx in order])-2, addedambiglabel)
 plt.legend(finalhandle, finallabel, fontsize=9)
 
-# plt.legend([handles[idx] for idx in order] ,[labels[idx] for idx in order],  fontsize=9)
 plt.tight_layout()
-plt.show()
+plt.savefig('test.svg')
