@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import numpy as np
+import scipy.interpolate
 
-
-ORANGE = "#fc8123"
-GREY = "#a3a29b"
+from abSENSE.constants import exponential, ORANGE, GREY, sample_parameters, find_confidence_interval
 
 
 class FitPlot():
@@ -32,10 +32,14 @@ class FitPlot():
             label="Bitscores of detected orthologs used in fit",
         )
 
-    def fit(self, distance, prediction, high, low, bit_threshold):
+    def fit(self, distance, a_fit, b_fit, covariance, bit_threshold):
+        distance, high, low = self._interpolate(distance, a_fit, b_fit, covariance)
+
+        prediction = exponential(distance, a_fit, b_fit)
         self.axes.plot(distance, prediction, color='red', label='Predicted bitscore')
         self.axes.plot(distance, high, color='black')
         self.axes.plot(distance, low, color='black')
+
         self.axes.fill_between(
             distance,
             high,
@@ -54,6 +58,17 @@ class FitPlot():
             c="black",
             label="Detectability threshold",
         )
+
+    def _interpolate(self, distance, a_fit, b_fit, covariance):
+        distance = np.linspace(distance.min(), distance.max(), num=100, endpoint=True)
+        random = np.random.default_rng()
+        result = find_confidence_interval(
+            random,
+            distance.reshape(-1, 1),
+            sample_parameters(random, a_fit, b_fit, covariance),
+        )
+
+        return distance, result.high_interval, result.low_interval
 
     def set_axes(self, distance, species):
         self.axes.set_ylabel(

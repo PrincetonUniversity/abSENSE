@@ -7,6 +7,7 @@ import scipy.stats
 from abSENSE.parameters import AbsenseParameters
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
 from abSENSE.results import FitResult, ErrorResult, NotEnoughDataResult, SampledResult
+from abSENSE.constants import exponential, sample_parameters, find_confidence_interval
 
 
 class AbsenseAnalyzer():
@@ -138,9 +139,12 @@ class AbsenseAnalyzer():
         global_threshold = bit_threshold.mean()['bit_threshold']
         correlation = self.correlation(self.distances, data.score)
 
-        intervals = self.find_confidence_interval(
-            self.sample_parameters(a_fit, b_fit, covariance),
+        intervals = find_confidence_interval(
+            self.random,
+            self.distances.to_numpy(),
+            sample_parameters(self.random, a_fit, b_fit, covariance),
             bit_threshold,
+            index=self.species
         )
 
         result = data.join(intervals).assign(
@@ -156,17 +160,9 @@ class AbsenseAnalyzer():
             b_fit=b_fit,
             bit_threshold=global_threshold,
             correlation=correlation,
+            covariance=covariance,
         )
 
-
-    def sample_parameters(self, a_fit, b_fit, covariance):
-        """
-        function to, where possible, use maximum likelihood estimates of a and b
-        parameter plus estimated covariance matrix to directly sample from the
-        probability distribution of a and b (assume Gaussian with mean of max
-        likelihood estimates and given covariance structure)
-        """
-        return self.random.multivariate_normal([a_fit, b_fit], covariance, size=200)
 
     def bit_threshold(self, gene_length):
         result = np.log2(gene_length) + np.log2(self.db_lengths) - np.log2(self.e_value)
@@ -177,55 +173,3 @@ class AbsenseAnalyzer():
         data = data[data.score > 0]
         _, _, correlation, _, _ = scipy.stats.linregress(data.distance, np.log(data.score))
         return correlation
-
-
-    def find_confidence_interval(self, sampled_parameters, bit_threshold):
-        """Gives an empirical estimate of the prediction interval.
-        function to take each of the sampled a, b values and use them to sample
-        directly from the distribution of scores taking into account the Gaussian
-        noise (a function of distance, a, b)."""
-        # species x samples
-        point_estimates = exponential(
-            self.distances.to_numpy(),
-            sampled_parameters[:, 0],
-            sampled_parameters[:, 1],
-        )
-
-        # species x samples
-        exp = np.exp(-1*sampled_parameters[:, 1] * self.distances.to_numpy())
-        variance = sampled_parameters[:, 0] * (1 - exp) * exp
-
-        # if variance is negative, need to ignore those samples
-        invalid = variance <= 0
-        # set to 0 to handle issues with sqrt and random normal
-        variance[invalid] = 0
-
-        # with normal, can't broadcast a shape on matrix inputs, instead
-        # perform a standard normal draw and do rescaling manually
-        # species x samples x draws
-        draws = (self.random.standard_normal(size=(*point_estimates.shape, 200)) *
-                 np.sqrt(variance[..., None]) + point_estimates[..., None])
-
-        # set invalid values to nan, keep first entry as point estimate
-        # this works because the invalid entries have 0 variance.
-        draws[invalid, 1:] = np.nan
-
-        # now find mean and std, ignoring nans
-        mean = np.nanmean(draws, axis=(1, 2))
-        std = np.nanstd(draws, axis=(1, 2))
-
-        # calculate p values analytically from std estimate
-        p_values = scipy.stats.norm.cdf(bit_threshold['bit_threshold'], mean, std)
-        low, high = scipy.stats.norm.interval(0.99, mean, std)
-
-        return pd.DataFrame(
-            {'p_values': p_values,
-             'low_interval': low,
-             'high_interval': high,
-             },
-            index=self.species)
-
-
-
-def exponential(x, a, b):
-    return a * np.exp(-b * x)

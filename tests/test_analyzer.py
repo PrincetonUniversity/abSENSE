@@ -1,4 +1,5 @@
 from abSENSE.analyzer import AbsenseAnalyzer
+from abSENSE.constants import sample_parameters, find_confidence_interval
 from abSENSE.results import SampledResult, ErrorResult, NotEnoughDataResult
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
 from io import StringIO
@@ -113,7 +114,7 @@ def test_fit_normal(analyzer_with_files):
 
 
 def test_sample_parameters(analyzer_with_files):
-    result = analyzer_with_files.sample_parameters(1, 1, [[1, 0], [0, 1]])
+    result = sample_parameters(analyzer_with_files.random, 1, 1, [[1, 0], [0, 1]])
     a_vals = result[:, 0]
     b_vals = result[:, 1]
     assert np.mean(a_vals) == pytest.approx(1, abs=1e-1)
@@ -138,14 +139,18 @@ def test_find_confidence_interval(analyzer_with_files):
         {'bit_threshold': 40.1},
         index=analyzer_with_files.species,
     )
-    result = analyzer_with_files.find_confidence_interval(
+    result = find_confidence_interval(
+        analyzer_with_files.random,
+        analyzer_with_files.distances.to_numpy(),
         np.array([
             [40.1, 1],
             [40.2, 2],
             [40.3, 3],
             [40.4, -1],
         ]),
-        bit_threshold)
+        bit_threshold,
+        analyzer_with_files.species,
+    )
 
     cer = result.iloc[0, :]
     assert cer['p_values'] == pytest.approx(0.089856, abs=1e-4)

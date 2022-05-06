@@ -10,7 +10,6 @@ def test_defaults(faked_recorder_non_closing, default_params):
     _, files = faked_recorder_non_closing
     main.perform_analysis(default_params)
 
-
     files['./parameters.tsv'].seek(0)
     result = pd.read_csv(files['./parameters.tsv'], delimiter='\t', comment='#')
     expected = pd.read_csv(StringIO( 

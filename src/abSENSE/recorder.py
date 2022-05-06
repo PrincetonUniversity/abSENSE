@@ -188,7 +188,7 @@ class FileRecorder:
         for file in self._files.values():
             file.write('\n')
 
-    def plot(self, gene, result, a_fit, b_fit, correlation, bit_threshold, outfile=None):
+    def plot(self, gene, result, a_fit, b_fit, correlation, covariance, bit_threshold, outfile=None):
         if self.plot_all is False:
             return
 
@@ -200,10 +200,9 @@ class FileRecorder:
         plot.scores(result.distance, result.score)
 
         plot.fit(result.distance,
-                 result.prediction,
-                 high=result.high_interval,
-                 low=result.low_interval,
-                 bit_threshold=bit_threshold,
+                 a_fit=a_fit,
+                 b_fit=b_fit,
+                 covariance=covariance, bit_threshold=bit_threshold,
                  )
 
         plot.set_axes(result.distance, result.index)
