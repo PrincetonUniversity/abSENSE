@@ -1,7 +1,7 @@
 from abSENSE.analyzer import AbsenseAnalyzer
-from abSENSE.constants import sample_parameters, find_confidence_interval
-from abSENSE.results import SampledResult, ErrorResult, NotEnoughDataResult
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
+from abSENSE.results import SampledResult, ErrorResult, NotEnoughDataResult
+from abSENSE.utilities import sample_parameters, find_confidence_interval
 from io import StringIO
 import pytest
 import pandas as pd

@@ -4,10 +4,10 @@ import scipy.optimize
 import scipy.stats
 
 
-from abSENSE.parameters import AbsenseParameters
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
+from abSENSE.parameters import AbsenseParameters
 from abSENSE.results import FitResult, ErrorResult, NotEnoughDataResult, SampledResult
-from abSENSE.constants import exponential, sample_parameters, find_confidence_interval
+from abSENSE.utilities import exponential, sample_parameters, find_confidence_interval
 
 
 class AbsenseAnalyzer():

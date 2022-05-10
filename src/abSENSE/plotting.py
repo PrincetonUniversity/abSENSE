@@ -3,7 +3,8 @@ from matplotlib.patches import Patch
 import numpy as np
 import scipy.interpolate
 
-from abSENSE.constants import exponential, ORANGE, GREY, sample_parameters, find_confidence_interval
+from abSENSE.constants import ORANGE, GREY
+from abSENSE.utilities import exponential, sample_parameters, find_confidence_interval
 
 
 class FitPlot():
