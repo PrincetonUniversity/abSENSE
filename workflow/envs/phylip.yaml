@@ -1,0 +1,5 @@
+name: phylip
+channels:
+  - bioconda
+dependencies:
+  - phylip=3.697

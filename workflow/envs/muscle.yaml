@@ -1,0 +1,5 @@
+name: muscle
+channels:
+  - bioconda
+dependencies:
+  - muscle=5.1

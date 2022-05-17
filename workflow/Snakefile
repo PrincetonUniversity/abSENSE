@@ -1,0 +1,367 @@
+configfile: 'config.yaml'
+
+paths = config['paths']
+species = list(config['shortened_names'].values())
+
+workdir: '/scratch/gpfs/tcomi/absense'
+
+rule all:
+    input:
+        paths['distances']
+
+for key, url in config['urls']['faa'].items():
+    specie = config['shortened_names'][key]
+    rule:
+        """Save each species' faa file, assumed gzipped."""
+        name: f'download_{specie}'
+        output: expand(paths['faa'], species=specie)
+        resources: wget_instance=1
+        params: url=url
+        shell:
+            'wget --quiet '
+                '-O - '
+                '{params.url} '
+            '| zcat -fq > {output} '
+
+
+checkpoint download_busco:
+    """Get busco resources, checkpoint to find id's after download."""
+    output:
+        directory(paths['busco'])
+    resources: wget_instance=1
+    params: url=config['urls']['busco']
+    shell:
+        'wget --quiet '
+            '-O {output}.tar.gz '
+            '{params.url} \n'
+        'tar -xzf {output}.tar.gz \n'
+        'rm {output}.tar.gz'
+
+rule hmmer_busco:
+    """Perform hmmsearch for each id.
+
+    input:
+        hmm: the hmm resource
+        faa: the faa files for all species
+
+    output:
+        a text file with the top hit for each species
+    """
+    input:
+        hmm=paths['busco_hmm'],
+        faa=expand(paths['faa'], species=species),
+
+    output:
+        paths['hmm_matches']
+
+    conda: 'envs/hmmer.yaml'
+
+    resources:
+        mem_mb=4_000,
+        time=60,
+
+    shell:
+        'for input in {input.faa} ; do '
+            'hmmsearch {input.hmm} $input | sed -n 15p >> {output} ; '
+        'done'
+
+def get_matches(wildcards):
+    checkpoints.download_busco.get()
+    ids = glob_wildcards(paths['busco_hmm']).id
+    return expand(paths['hmm_matches'], id=ids)
+
+checkpoint make_busco_fastas:
+    """Generate faa of best match for each hmm id.
+
+    input:
+        matches: all hmmsearch combined output files for all ids
+        faa: all faa files for all species
+        target_db: blast db for target species
+        other_dbs: blast dbs for other species
+
+    output:
+        directory with files were a gene is found for all species
+        with an evalue lower than specified in config.
+
+    blast is required in this step, which means the execution has to be shell
+    because this also filters, it needs to be a checkpoint and it's best to
+    limit the number of checkpoints chained together. Forgive the bashing
+    """
+    input:
+        matches=get_matches,
+        faa=expand(paths['faa'], species=species),
+        target_db=expand(paths['blast_db'], species=species[0]),
+        other_dbs=expand(paths['blast_db'], species=species[1:])
+    output:
+        directory(Path(paths['busco_faa']).parent)
+    conda: 'envs/blast.yaml'
+
+    params:
+        num_species=len(species),
+        check_match=r'''{
+            if (NF < 9 || $1 > E_VAL){genes="ERROR"; exit}
+            genes = genes $9 ","
+        }
+        END{print genes}''',
+        extract_genes=r'''BEGIN{
+            split(genes,gene_names,","); 
+            RS=">";
+        }
+        FNR==1 {count++}
+        $0 ~ "^" gene_names[count] {printf ">" $0; nextfile}''',
+        first_genes=r'''BEGIN{ RS=">"; }
+        FNR==2 {printf ">" $0; nextfile}''',
+
+    shell:
+        'mkdir -p {output}\n'
+        'for infile in {input.matches} ; do\n'
+            # check if the input file has a high enough e value
+            "genes=$(awk -v E_VAL={config[hmmer_e_val]} '{params.check_match}' $infile)\n"
+            'if [[ "$genes" == "ERROR" ]]; then\n'
+                'echo $infile failed e value check\n'
+                'continue\n '
+            'fi\n'
+            # get basename
+            'inf=${{infile##*/}}\n'
+            # generate fasta file
+            'outfile={output}/${{inf%.*}}.faa\n'
+            "awk -v genes=$genes '{params.extract_genes}' {input.faa} > $outfile \n"
+            # run blast against target db to check close matches
+            'matches=$(blastp '
+                '-query $outfile '
+                '-db {input.target_db} '
+                '-outfmt "6 sacc" '
+                '-max_target_seqs 1 '
+                '2>/dev/null )\n'
+            # check each gene matches to the same target once
+            'num_matches=$(echo $matches | wc -w) \n'
+            'uniq_matches=$(echo $matches | tr " " "\\n" | uniq | wc -l) \n'
+            'if [[ $num_matches != {params.num_species} || $uniq_matches != 1 ]] ; then\n'
+                'echo $infile failed unique matches to target\n'
+                'rm $outfile\n'
+                'continue\n'
+            'fi\n'
+        'done\n'
+        'combined={output}/combined_target.fa\n'
+        "awk '{params.first_genes}' {output}/*.faa > $combined\n"
+        'for db in {input.other_dbs}; do\n'
+            # run blast against the other databases
+            'blastp '
+                '-query $combined '
+                '-db $db '
+                '-outfmt "6 qacc sacc" '
+                '-max_target_seqs 1 '
+                '2>/dev/null '
+            # for each line
+            '| while read line ; do \n'
+                # get target and queried species as array
+                'line=($line)\n'
+                # test the queried species is in the same file as target
+                # || : catches the error return code if the file isn't found
+                'query=$(grep -m1 -Fl ${{line[0]}} {output}/*.faa) || :\n'
+                # skip if file can't be found, happens if it was previously removed
+                'if [[ "$query" == "" ]]; then continue; fi \n'
+                'if ! grep -qF ${{line[1]}} $query ; then\n'
+                    # else, delete file
+                    'echo $query failed reciprical best match\n'
+                    'rm $query\n'
+                'fi\n'
+            'done\n'
+        'done\n'
+        # clean up combined file
+        'rm $combined\n'
+
+rule muscle:
+    """Run muscle alignment.
+
+    Because the output can be shuffled, need to prepend the species name
+    to each gene first.  Deconvolved in the merging step.
+    """
+    input:
+        paths['busco_faa']
+    output:
+        paths['muscle_alignment']
+    conda: 'envs/muscle.yaml'
+    params:
+        add_species=r'''BEGIN{
+            split(species,species_names,","); 
+            RS=">";
+        }
+        NR>1{print ">" species_names[NR-1] "_" $0}''',
+        species=','.join(species)
+
+    shell:
+        'muscle '
+            "-align <(awk -v species={params.species} '{params.add_species}' {input}) "
+            '-output {output} '
+            '2>/dev/null '
+
+def merge_afa_input(wildcards):
+    checkpoints.make_busco_fastas.get()
+    ids = glob_wildcards(paths['busco_faa']).id
+    return expand(paths['muscle_alignment'], id=ids)
+
+rule merge_afa:
+    """Produce a merged afa file with format expected by protdist.
+
+    As usual the first line of the file gives the number of species and the
+    number of sites.
+
+    Next come the species data. Each sequence starts on a new line, has a
+    ten-character species name that must be blank-filled to be of that length,
+    followed immediately by the species data in the one-letter code.
+    """
+    input: merge_afa_input
+    output: paths['merged_afa']
+    run:
+        merged = {specie: [] for specie in species}
+        specie = species[0]  # will be overriden
+        for infile in input:
+            for line in open(infile):
+                if line.startswith('>'):
+                    specie = line[1:6]
+                    continue
+                merged[specie].append(line.strip())
+
+        for specie in merged:
+            merged[specie] = ''.join(merged[specie])
+
+        with open(output[0], 'w') as outfile:
+            outfile.write(f'{len(species)} {len(merged[specie])}\n')
+            for specie, sequence in merged.items():
+                if len(specie) > 10:
+                    specie = specie[:10]
+                outfile.write(f'{specie:10}{sequence}\n')
+
+
+rule protdist:
+    input: paths['merged_afa']
+    output: paths['distances']
+    conda: 'envs/phylip.yaml'
+    params:
+        awk_script=r'!/^ /{print $1 "\t" $2}' # print first and second row of new entries (no space at start)
+    shell: 
+        'ln -s {input} infile \n'  # hard coded in protdist
+        'echo Y | protdist >/dev/null \n'  # expected interactive
+        "awk '{params.awk_script}' outfile "  # outfile is also hard coded
+            '| sort -n -k 2,2 '
+            '> {output} \n'
+        'rm infile outfile'
+
+rule make_blast_db:
+    input: paths['faa']
+    output: 
+        alias=paths['blast_db'],
+        implicit=multiext(paths['blast_db'],
+                          '.pin', '.phr', '.psq',
+                          '.pdb', '.pot', '.pto', '.ptf')
+    conda: 'envs/blast.yaml'
+    shell:
+        'makeblastdb '
+            '-dbtype prot '
+            '-in {input} '
+            '-out {output.alias} '
+            '> /dev/null \n'
+        'ln -rs {input} {output.alias}'
+
+ruleorder:
+    make_target_fasta > make_target_fasta_no_targets
+
+def check_targets(wildcards):
+    # non-target species
+    if wildcards.species != species[0]:
+        return paths['reciprocal_genes'].format(**wildcards)
+    # targets set
+    if 'target_genes' in paths:
+        return paths['target_genes']
+    # just copy faa for target species, in next rule
+    raise ValueError
+
+rule make_target_fasta:
+    input:
+        target=check_targets,
+        faa=paths['faa'],
+
+    output:
+        paths['target_fasta']
+
+    conda: 'envs/seqkit.yaml'
+
+    shell:
+        'seqkit grep '
+            '--pattern-file {input.target} '
+            '{input.faa} '
+            '--out-file {output} '
+            '2>/dev/null\n'
+
+rule make_target_fasta_no_targets:
+    """If no target genes are provided, just copy over fasta.
+
+    Only for the target species, others should throw an error
+    """
+    input:
+        faa=expand(paths['faa'], species=species[0])
+
+    output:
+        expand(paths['target_fasta'], species=species[0])
+
+    shell:
+        'cp {input.faa} {output}\n'  # no targets
+
+def blast_input(wildcards):
+    return {
+            'query': paths['target_fasta'].format(species=wildcards.query),
+            'db': paths['blast_db'].format(species=wildcards.database),
+            }
+
+rule blast_search:
+    input: unpack(blast_input)
+    output: paths['blast_scores']
+    conda: 'envs/blast.yaml'
+    shell:
+        'blastp '
+            '-query {input.query} '
+            '-db {input.db} '
+            '-outfmt "6 qacc sacc bitscore evalue" '
+            '-max_target_seqs 1 '
+            '2>/dev/null '
+            '> {output} '
+
+rule make_gene_targets:
+    input:
+        lambda wildcards: expand(paths['blast_scores'],
+                query=species[0],
+                database=wildcards.species)
+    output:
+        paths['reciprocal_genes']
+
+    shell:
+        'cut -f2 {input} > {output}'
+
+rule determine_distances:
+    """Search for reciprocal best matches.
+
+    If the gene is present multiple times, take lowest evalue
+    If a gene is present in forward but at high e value => 0
+    If the e value passes but reciprocal gene doesn't match => N/A
+    If evalue and reciprocal search pass, use forward bitscore
+    """
+    input:
+        self_match=expand(paths['blast_scores'],
+                query=species[0],
+                database=species[0]),
+        forward=expand(paths['blast_scores'],
+                query=species[0],
+                database=species[1:]),
+        reciprocal=expand(paths['blast_scores'],
+                query=species[1:],
+                database=species[0]),
+    params:
+        species=','.join(species),
+        e_val_threshold=config['blast_e_val']
+
+    output:
+        paths['bit_scores']
+
+    script:
+        'scripts/join_blast_results.py'
