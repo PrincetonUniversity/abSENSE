@@ -71,9 +71,8 @@ def find_confidence_interval(
     draws[invalid, 1:] = np.nan
 
     # now find mean and std, ignoring nans
-    draws = draws[~draws.isna()]
-    mean = np.mean(draws, axis=(1, 2))
-    std = np.std(draws, axis=(1, 2))
+    mean = np.nanmean(draws, axis=(1, 2))  # type: ignore[no-untyped-call]
+    std = np.nanstd(draws, axis=(1, 2))  # type: ignore[no-untyped-call]
 
     low, high = scipy.stats.norm.interval(0.99, mean, std)
 

@@ -24,7 +24,7 @@ class AbsenseAnalyzer:
             params.distances,
             delimiter="\t",
             comment="#",
-            names=np.array("specie", "distance"),
+            names=np.array(["specie", "distance"]),
             index_col=0,
         )
 
@@ -51,7 +51,7 @@ class AbsenseAnalyzer:
                 params.gene_lengths,
                 delimiter="\t",
                 comment="#",
-                names=np.array("gene", "length"),
+                names=np.array(["gene", "length"]),
                 index_col=0,
             )
 
@@ -65,7 +65,7 @@ class AbsenseAnalyzer:
                 params.db_lengths,
                 delimiter="\t",
                 comment="#",
-                names=np.array("specie", "length"),
+                names=np.array(["specie", "length"]),
                 index_col=0,
             )
 

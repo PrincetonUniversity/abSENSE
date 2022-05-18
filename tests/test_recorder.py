@@ -8,6 +8,7 @@ import pytest
 
 from abSENSE.parameters import AbsenseParameters
 from abSENSE.recorder import FileRecorder
+from abSENSE.results import SampledResult
 
 
 def test_open(faked_recorder):
@@ -329,17 +330,18 @@ def test_plot(default_params, mocker):
     df = pd.read_csv(result, index_col=0)
     covariance = [[1.69e03, 1.20e00], [1.20e00, 1.82e-03]]
 
-    result = StringIO()
-    recorder.plot(
+    fit = SampledResult(
         "GENE",
         df,
         2359.9123,
         0.6761,
         correlation=0.9,
-        bit_threshold=40,
-        outfile=result,
+        bit_threshold=[40],
         covariance=covariance,
     )
+    result = StringIO()
+    recorder.plot(fit, outfile=result)
+
     assert "DOCTYPE svg" in result.getvalue()
 
 
@@ -365,15 +367,16 @@ def test_plot_interpolated(default_params, mocker):
     df = pd.read_csv(result, index_col=0)
     covariance = [[26.43, 1.02], [1.02, 0.16]]
 
-    result = StringIO()
-    recorder.plot(
+    fit = SampledResult(
         "NP_116682.3",
         df,
         352.347,
         14.4606,
-        correlation=-0.99,
-        bit_threshold=41.54,
-        outfile=result,
+        correlation=0.99,
+        bit_threshold=[41.54],
         covariance=covariance,
     )
+
+    result = StringIO()
+    recorder.plot(fit, outfile=result)
     assert "DOCTYPE svg" in result.getvalue()
