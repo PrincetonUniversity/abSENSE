@@ -1,46 +1,71 @@
+"""Result objects to represent various outcomes from analysis."""
+from __future__ import annotations
+
+import numpy as np
+import numpy.typing as npt
+import pandas as pd
+
 from abSENSE.recorder import FileRecorder
 
 
-class FitResult():
-    def __init__(self, gene):
-        self.gene = gene
+class FitResult:
+    """Base class for fitting results."""
 
-    def __eq__(self, other):
+    def __init__(self, gene: str):
+        self.gene = gene
+        self.status = ""
+
+    def __eq__(self, other: object) -> bool:
+        """Test if this fitting result is the same as other."""
         return self.__dict__ == other.__dict__
 
-    def record_to(self, recorder: FileRecorder):
+    def record_to(self, recorder: FileRecorder) -> None:
+        """Record this result to the FileRecorder.
+
+        Args:
+            recorder: a FileRecorder
+        """
         recorder.write_gene(self.gene)
 
-    def status(self):
-        return ''
 
 class ErrorResult(FitResult):
-    def __init__(self, gene, predictions=None):
+    """An analysis result when an analysis error occurs."""
+
+    def __init__(self, gene: str, predictions: list[float] | None = None):
         super().__init__(gene)
         self.predictions = predictions
+        self.status = "Analysis Error"
 
-    def record_to(self, recorder: FileRecorder):
+    def record_to(self, recorder: FileRecorder) -> None:
         super().record_to(recorder)
         recorder.analysis_error(predictions=self.predictions)
 
-    def status(self):
-        return 'Analysis Error'
-
 
 class NotEnoughDataResult(FitResult):
-    def __init__(self, gene):
-        super().__init__(gene)
+    """Analysis result when not enough data is present."""
 
-    def record_to(self, recorder: FileRecorder):
+    def __init__(self, gene: str):
+        super().__init__(gene)
+        self.status = "Not Enough Data"
+
+    def record_to(self, recorder: FileRecorder) -> None:
         super().record_to(recorder)
         recorder.not_enough_data()
 
-    def status(self):
-        return 'Not Enough Data'
-
 
 class SampledResult(FitResult):
-    def __init__(self, gene, result, a_fit, b_fit, bit_threshold, correlation, covariance):
+    """Analysis result when the fit is successful."""
+
+    def __init__(
+        self,
+        gene: str,
+        result: pd.DataFrame,
+        a_fit: float,
+        b_fit: float,
+        bit_threshold: pd.DataFrame,
+        correlation: float,
+        covariance: npt.NDArray[np.float64],
+    ):
         super().__init__(gene)
         self.result = result
         self.a_fit = a_fit
@@ -49,18 +74,9 @@ class SampledResult(FitResult):
         self.correlation = correlation
         self.covariance = covariance
 
-    def record_to(self, recorder: FileRecorder):
+    def record_to(self, recorder: FileRecorder) -> None:
         super().record_to(recorder)
-        recorder.plot(
-            gene=self.gene,
-            result=self.result,
-            a_fit=self.a_fit,
-            b_fit=self.b_fit,
-            correlation=self.correlation,
-            bit_threshold=self.bit_threshold,
-            covariance=self.covariance,
-        )
-
+        recorder.plot(result=self)
 
         recorder.write_params(self.a_fit, self.b_fit)
 
@@ -76,6 +92,3 @@ class SampledResult(FitResult):
             )
 
         recorder.finalize_row()
-
-    def status(self):
-        return ''

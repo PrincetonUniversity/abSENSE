@@ -1,10 +1,14 @@
+"""Custom exceptions for the package."""
+from __future__ import annotations
+
+
 class AbsenseException(Exception):
-    pass
+    """Base exception class."""
 
 
 class MissingSpeciesException(AbsenseException):
-    pass
+    """A species is missing from the analysis."""
 
 
 class MissingGeneException(AbsenseException):
-    pass
+    """A gene is missing from the analysis."""

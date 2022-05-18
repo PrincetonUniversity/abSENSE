@@ -69,6 +69,7 @@ repos:
   rev: v0.942
   hooks:
   - id: mypy
+    additional_dependencies: [click==8.1.2, numpy==1.21.*, scipy==1.6.1, pandas-stubs, matplotlib==3.5.1]
     files: src
     args: []
 
@@ -76,6 +77,7 @@ repos:
   rev: v2.1.0
   hooks:
   - id: codespell
+    args: [--ignore-words-list, "absense,inout"]
 
 - repo: https://github.com/shellcheck-py/shellcheck-py
   rev: v0.8.0.4

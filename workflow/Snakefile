@@ -104,7 +104,7 @@ checkpoint make_busco_fastas:
         }
         END{print genes}''',
         extract_genes=r'''BEGIN{
-            split(genes,gene_names,","); 
+            split(genes,gene_names,",");
             RS=">";
         }
         FNR==1 {count++}
@@ -184,7 +184,7 @@ rule muscle:
     conda: 'envs/muscle.yaml'
     params:
         add_species=r'''BEGIN{
-            split(species,species_names,","); 
+            split(species,species_names,",");
             RS=">";
         }
         NR>1{print ">" species_names[NR-1] "_" $0}''',
@@ -215,7 +215,7 @@ rule merge_afa:
     output: paths['merged_afa']
     run:
         merged = {specie: [] for specie in species}
-        specie = species[0]  # will be overriden
+        specie = species[0]  # will be overridden
         for infile in input:
             for line in open(infile):
                 if line.startswith('>'):
@@ -240,7 +240,7 @@ rule protdist:
     conda: 'envs/phylip.yaml'
     params:
         awk_script=r'!/^ /{print $1 "\t" $2}' # print first and second row of new entries (no space at start)
-    shell: 
+    shell:
         'ln -s {input} infile \n'  # hard coded in protdist
         'echo Y | protdist >/dev/null \n'  # expected interactive
         "awk '{params.awk_script}' outfile "  # outfile is also hard coded
@@ -250,7 +250,7 @@ rule protdist:
 
 rule make_blast_db:
     input: paths['faa']
-    output: 
+    output:
         alias=paths['blast_db'],
         implicit=multiext(paths['blast_db'],
                           '.pin', '.phr', '.psq',

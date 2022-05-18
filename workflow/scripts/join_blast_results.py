@@ -1,25 +1,19 @@
+from __future__ import annotations
+
 import sys
 from dataclasses import dataclass
-from pprint import pprint
-from typing import Optional
-
 
 # string constants for reporting, can change for testing
-ERRORS = {
-    'high_e_val': '0',
-    'unset': 'ERROR',
-    'mismatch': 'N/A',
-    'missing': 'N/A'
-}
+ERRORS = {"high_e_val": "0", "unset": "N/A", "mismatch": "N/A", "missing": "N/A"}
 
 
 @dataclass
-class BlastRecord():
+class BlastRecord:
     query: str
     match: str
     bitscore: float
     e_val: float
-    reported_value: Optional[str]
+    reported_value: str | None
 
     @classmethod
     def from_blast_line(cls, line: str, threshold: float):
@@ -27,7 +21,7 @@ class BlastRecord():
         reported_value = None
         if float(e_val) > threshold:
             # set reported value to 0
-            reported_value = ERRORS['high_e_val']
+            reported_value = ERRORS["high_e_val"]
         return cls(
             query=query,
             match=match,
@@ -39,7 +33,7 @@ class BlastRecord():
     @property
     def report(self):
         if self.reported_value is None:
-            return ERRORS['unset']
+            return ERRORS["unset"]
         return self.reported_value
 
     def found_match(self):
@@ -48,9 +42,10 @@ class BlastRecord():
 
     def found_mismatch(self):
         if self.reported_value is None:
-            self.reported_value = ERRORS['mismatch']
+            self.reported_value = ERRORS["mismatch"]
 
-class BlastRecords():
+
+class BlastRecords:
     def __init__(self, species, threshold=0.001):
         self.species = species
         self.genes = []
@@ -73,21 +68,27 @@ class BlastRecords():
         """Validate db records based on reciprocal search."""
         for record in self._read_file(infile):
             # check if reciprocal match is present, this is fast
-            if (record.match in self.db
-                    and species in self.db[record.match]
-                    and self.db[record.match][species].match == record.query):
+            if (
+                record.match in self.db
+                and species in self.db[record.match]
+                and self.db[record.match][species].match == record.query
+            ):
                 self.db[record.match][species].found_match()
                 continue
 
             # need to find db record and report mismatch
             for species_db in self.db.values():
-                if (species in species_db  # for this gene
-                        and species_db[species].match == record.query):
+                if (
+                    species in species_db  # for this gene
+                    and species_db[species].match == record.query
+                ):
                     species_db[species].found_mismatch()
                     break
             else:  # if not found
-                raise ValueError('Unable to match reciprocal search to genes preivously found: '
-                                 f'{record}')
+                raise ValueError(
+                    "Unable to match reciprocal search to genes preivously found: "
+                    f"{record}"
+                )
 
     def _read_file(self, infile):
         with open(infile) as records:
@@ -110,27 +111,44 @@ class BlastRecords():
         self.db[gene][species] = record
 
     def report(self, outfile):
-        """Produce tsv file of distances for absense."""
-        outfile.write('\t'.join(['gene'] + self.species))
+        """Produce tsv file of distances for abSENSE."""
+        outfile.write("\t".join(["gene"] + self.species))
         for gene in self.genes:
-            outfile.write(f'\n{gene}\t')
-            outfile.write('\t'.join(
-                self.db[gene][species].report if species in self.db[gene] else ERRORS['missing']
-                for species in self.species))
+            outfile.write(f"\n{gene}\t")
+            outfile.write(
+                "\t".join(
+                    self.db[gene][species].report
+                    if species in self.db[gene]
+                    else ERRORS["missing"]
+                    for species in self.species
+                )
+            )
 
 
 def main():
-    if 'snakemake' in globals():
-        self_match = snakemake.input['self_match']
-        forwards = snakemake.input['forward']
-        reciprocal = snakemake.input['reciprocal']
-        species = snakemake.params['species'].split(',')
-        e_val_threshold = snakemake.params['e_val_threshold']
-        output = snakemake.output[0]
+    if "snakemake" in globals():
+        self_match = snakemake.input["self_match"][0]  # noqa: F821
+        forwards = snakemake.input["forward"]  # noqa: F821
+        reciprocal = snakemake.input["reciprocal"]  # noqa: F821
+        species = snakemake.params["species"].split(",")  # noqa: F821
+        e_val_threshold = snakemake.params["e_val_threshold"]  # noqa: F821
+        output = snakemake.output[0]  # noqa: F821
     else:
-        base = 'scoring/blast/{query}/{database}.txt'
-        species = ['S_cer', 'S_par', 'S_mik', 'S_kud', 'S_bay', 'S_cas',
-                   'K_wal', 'A_gos', 'K_lac', 'A_nid', 'S_pom', 'Y_lip']
+        base = "scoring/blast/{query}/{database}.txt"
+        species = [
+            "S_cer",
+            "S_par",
+            "S_mik",
+            "S_kud",
+            "S_bay",
+            "S_cas",
+            "K_wal",
+            "A_gos",
+            "K_lac",
+            "A_nid",
+            "S_pom",
+            "Y_lip",
+        ]
         self_match = base.format(query=species[0], database=species[0])
         forwards = [base.format(query=species[0], database=db) for db in species[1:]]
         reciprocal = [base.format(query=q, database=species[0]) for q in species[1:]]
@@ -138,14 +156,16 @@ def main():
         output = sys.stdout
         # raise ValueError('Only supported through snakemake')
 
-    records = BlastRecords(species)
+    records = BlastRecords(species, threshold=e_val_threshold)
     records.read_self_match(self_match)
 
-    for specie, forward, reciprocal in zip(species[1:], forwards, reciprocal):
+    for specie, forward, recip in zip(species[1:], forwards, reciprocal):
         records.read_forward_match(forward, specie)
-        records.read_reciprocal_match(reciprocal, specie)
+        records.read_reciprocal_match(recip, specie)
 
-    records.report(sys.stdout)
+    with open(output, "w") as outfile:
+        records.report(outfile)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

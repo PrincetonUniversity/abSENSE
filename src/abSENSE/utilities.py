@@ -1,13 +1,26 @@
+"""Collection of functions not tied to a particular object."""
+from __future__ import annotations
+
+import typing
+
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import scipy.stats
 
 
-def exponential(x, a, b):
-    return a * np.exp(-b * x)
+@typing.no_type_check
+def exponential(domain, scale, decay):
+    """Exponential function for fitting/plotting."""
+    return scale * np.exp(-decay * domain)
 
 
-def sample_parameters(random, a_fit, b_fit, covariance):
+def sample_parameters(
+    random: np.random.Generator,
+    a_fit: float,
+    b_fit: float,
+    covariance: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
     """
     function to, where possible, use maximum likelihood estimates of a and b
     parameter plus estimated covariance matrix to directly sample from the
@@ -17,7 +30,13 @@ def sample_parameters(random, a_fit, b_fit, covariance):
     return random.multivariate_normal([a_fit, b_fit], covariance, size=200)
 
 
-def find_confidence_interval(random, distances, sampled_parameters, bit_threshold=None, index=None):
+def find_confidence_interval(
+    random: np.random.Generator,
+    distances: npt.NDArray[np.float64],
+    sampled_parameters: npt.NDArray[np.float64],
+    bit_threshold: pd.DataFrame | None = None,
+    index: pd.Index | None = None,
+) -> pd.DataFrame:
     """Gives an empirical estimate of the prediction interval.
     function to take each of the sampled a, b values and use them to sample
     directly from the distribution of scores taking into account the Gaussian
@@ -30,7 +49,7 @@ def find_confidence_interval(random, distances, sampled_parameters, bit_threshol
     )
 
     # species x samples
-    exp = np.exp(-1*sampled_parameters[:, 1] * distances)
+    exp = np.exp(-1 * sampled_parameters[:, 1] * distances)
     variance = sampled_parameters[:, 0] * (1 - exp) * exp
 
     # if variance is negative, need to ignore those samples
@@ -41,32 +60,40 @@ def find_confidence_interval(random, distances, sampled_parameters, bit_threshol
     # with normal, can't broadcast a shape on matrix inputs, instead
     # perform a standard normal draw and do rescaling manually
     # species x samples x draws
-    draws = (random.standard_normal(size=(*point_estimates.shape, 200)) *
-             np.sqrt(variance[..., None]) + point_estimates[..., None])
+    draws = (
+        random.standard_normal(size=(*point_estimates.shape, 200))
+        * np.sqrt(variance[..., None])
+        + point_estimates[..., None]
+    )
 
     # set invalid values to nan, keep first entry as point estimate
     # this works because the invalid entries have 0 variance.
     draws[invalid, 1:] = np.nan
 
     # now find mean and std, ignoring nans
-    mean = np.nanmean(draws, axis=(1, 2))
-    std = np.nanstd(draws, axis=(1, 2))
+    draws = draws[~draws.isna()]
+    mean = np.mean(draws, axis=(1, 2))
+    std = np.std(draws, axis=(1, 2))
 
     low, high = scipy.stats.norm.interval(0.99, mean, std)
 
     # calculate p values analytically from std estimate
     if bit_threshold is not None:
-        p_values = scipy.stats.norm.cdf(bit_threshold['bit_threshold'], mean, std)
+        p_values = scipy.stats.norm.cdf(bit_threshold["bit_threshold"], mean, std)
 
         return pd.DataFrame(
-            {'p_values': p_values,
-             'low_interval': low,
-             'high_interval': high,
-             },
-            index=index)
+            {
+                "p_values": p_values,
+                "low_interval": low,
+                "high_interval": high,
+            },
+            index=index,
+        )
 
     return pd.DataFrame(
-        {'low_interval': low,
-         'high_interval': high,
-         },
-        index=index)
+        {
+            "low_interval": low,
+            "high_interval": high,
+        },
+        index=index,
+    )
