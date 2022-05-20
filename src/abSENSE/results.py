@@ -62,7 +62,7 @@ class SampledResult(FitResult):
         result: pd.DataFrame,
         a_fit: float,
         b_fit: float,
-        bit_threshold: pd.DataFrame,
+        bit_threshold: float,
         correlation: float,
         covariance: npt.NDArray[np.float64],
     ):

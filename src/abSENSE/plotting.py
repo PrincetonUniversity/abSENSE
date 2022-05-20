@@ -60,7 +60,7 @@ class FitPlot:
         a_fit: float,
         b_fit: float,
         covariance: npt.NDArray[np.float64],
-        bit_threshold: pd.DataFrame,
+        bit_threshold: float,
     ) -> None:
         """Plot fit and confidence interval.
 
@@ -91,7 +91,7 @@ class FitPlot:
         self.axes.set_xlim([-self.interval, max(distance) + self.interval])
         self.axes.set_ylim([0, max(prediction) * 1.1])
         self.axes.axhline(
-            y=max(bit_threshold),
+            y=bit_threshold,
             linestyle="dashed",
             c="black",
             label="Detectability threshold",

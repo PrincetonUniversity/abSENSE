@@ -11,6 +11,7 @@ ERRORS = {"high_e_val": "0", "unset": "N/A", "mismatch": "N/A", "missing": "0"}
 @dataclass
 class BlastRecord:
     """Class for a single blast record."""
+
     query: str
     match: str
     bitscore: float
@@ -53,6 +54,7 @@ class BlastRecord:
 
 class BlastRecords:
     """A database of blast records."""
+
     def __init__(self, species: list[str], threshold=0.001):
         self.species = species
         self.genes: list[str] = []
@@ -99,7 +101,7 @@ class BlastRecords:
 
     def _read_file(self, infile) -> Generator[BlastRecord, None, None]:
         """Open provided file and return a generator of blast records."""
-        with open(infile, encoding='UTF-8') as records:
+        with open(infile, encoding="UTF-8") as records:
             for line in records:
                 yield BlastRecord.from_blast_line(line, self.threshold)
 

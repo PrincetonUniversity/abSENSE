@@ -64,6 +64,11 @@ from abSENSE.recorder import FileRecorder
     "the bitscores file. By default, will not produce plots.",
 )
 @click.option(
+    "--plot",
+    default="",
+    help="A comma separated list of genes to plot",
+)
+@click.option(
     "--out-dir",
     type=click.Path(file_okay=False),
     help="Name of output directory. " "Default is date and time when analysis was run.",

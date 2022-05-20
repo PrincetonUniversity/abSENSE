@@ -22,8 +22,8 @@ class FileRecorder:
         self.output_dir = params.output_directory
         self.species = species
         self.predict_all = params.predict_all
-        self.plot_all = params.plot_all
-        if self.plot_all:
+        self.should_plot = params.plot_test()
+        if params.need_plots():
             os.makedirs(f"{self.output_dir}/plots", exist_ok=True)
         self.filenames = {
             "bitscores": "predicted_bitscores.tsv",
@@ -217,7 +217,7 @@ class FileRecorder:
             result: the sampled result
             outfile: if set, will save to the specified file.  Default to result.gene
         """
-        if self.plot_all is False:
+        if not self.should_plot(result.gene):
             return
 
         if outfile is None:

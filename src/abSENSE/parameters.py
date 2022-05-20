@@ -2,22 +2,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TextIO
+from typing import Callable, TextIO
 
 
 @dataclass
 class AbsenseParameters:
     """Collection of parameters from the command line."""
 
-    distances: TextIO
     bitscores: TextIO
-    e_value: float
-    include_only: str | None
-    gene_lengths: TextIO | None
     db_lengths: TextIO | None
-    predict_all: bool
-    plot_all: bool
+    distances: TextIO
+    e_value: float
+    gene_lengths: TextIO | None
+    include_only: str | None
     out_dir: str | None
+    plot: str
+    plot_all: bool
+    predict_all: bool
     start_time: str
 
     @property
@@ -37,3 +38,18 @@ class AbsenseParameters:
     def default_db_length(self) -> float:
         """Default database length."""
         return 8_000_000
+
+    def need_plots(self) -> bool:
+        """Return true if the params require plotting."""
+        return self.plot_all or self.plot != ""
+
+    def plot_test(self) -> Callable[[str], bool]:
+        """Return a function to test if a gene should be plotted."""
+        targets = set(self.plot.split(","))
+
+        def should_plot(gene: str) -> bool:
+            if self.plot_all:
+                return True
+            return gene in targets
+
+        return should_plot

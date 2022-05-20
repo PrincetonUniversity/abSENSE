@@ -1,7 +1,7 @@
 """Module for performing the abSENSE analysis."""
 from __future__ import annotations
 
-from typing import Generator
+from typing import Callable, Generator
 
 import numpy as np
 import pandas as pd
@@ -72,6 +72,10 @@ class AbsenseAnalyzer:
         self.validate_species()
         self.validate_genes()
 
+        self.gene_filter: Callable[[str], bool] = lambda x: True
+        if params.need_plots():
+            self.gene_filter = params.plot_test()
+
     def validate_species(self) -> None:
         """Checks that the requested species are present in the bitscores and lengths."""
         # all species in species are in bitscores
@@ -112,7 +116,7 @@ class AbsenseAnalyzer:
         Returns:
             Number of genes to analyze
         """
-        return len(self.bitscores)
+        return sum(self.gene_filter(gene) for gene in self.bitscores.index)
 
     def fit_genes(self) -> Generator[FitResult, None, None]:
         """Fit all genes in analysis.
@@ -121,7 +125,8 @@ class AbsenseAnalyzer:
             Generator of FitResults for each gene
         """
         for gene, bitscore in self.bitscores.iterrows():
-            yield self.fit_gene(str(gene), bitscore)
+            if self.gene_filter(gene):
+                yield self.fit_gene(str(gene), bitscore)
 
     def fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
         """Fit a gene.
