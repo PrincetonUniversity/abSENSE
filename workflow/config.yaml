@@ -31,7 +31,7 @@ paths:
   # for determining bitscores
   blast_db: "blast_dbs/{species}.faa"
   # list of genes, one per line.  Remove to target all genes in target species
-  target_genes: "targets.txt"
+  # target_genes: "targets.txt"
 
   target_fasta: "scoring/targets/{species}.faa"
   reciprocal_genes: "scoring/targets/{species}_genes.txt"

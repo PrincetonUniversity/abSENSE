@@ -37,6 +37,7 @@ def tests(session: nox.Session) -> None:
     """
     session.install(".[test]")
     session.run("pytest", *session.posargs)
+    session.run("pytest", "workflow/scripts", *session.posargs)
 
 
 @nox.session

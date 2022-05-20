@@ -7,7 +7,8 @@ workdir: '/scratch/gpfs/tcomi/absense'
 
 rule all:
     input:
-        paths['distances']
+        paths['distances'],
+        paths['bit_scores']
 
 for key, url in config['urls']['faa'].items():
     specie = config['shortened_names'][key]
@@ -232,7 +233,6 @@ rule merge_afa:
                 if len(specie) > 10:
                     specie = specie[:10]
                 outfile.write(f'{specie:10}{sequence}\n')
-
 
 rule protdist:
     input: paths['merged_afa']

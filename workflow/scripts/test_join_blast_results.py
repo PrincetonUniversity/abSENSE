@@ -3,13 +3,13 @@ from __future__ import annotations
 from io import StringIO
 
 import pytest
-from join_blast_results import ERRORS, BlastRecords
+from blast_records import ERRORS, BlastRecords
 
 
 @pytest.fixture
 def records(mocker):
     # make open just return the object so StringIO objects can be passed in
-    mocker.patch("join_blast_results.open", side_effect=lambda x: x)
+    mocker.patch("blast_records.open", side_effect=lambda x, **kwargs: x)
     # override error strings as most will be 0/NA and hard to determine cause
     ERRORS["high_e_val"] = "HEV"
     ERRORS["unset"] = "U"
