@@ -1,0 +1,29 @@
+---
+# you may change these, but keep the same wildcards
+paths:
+  faa: "fastas/{species}.faa"
+
+  # for determining distances
+  busco: 'eukaryota_odb10'
+  busco_hmm: 'eukaryota_odb10/hmms/{id}.hmm'
+  hmm_matches: 'matches/{id}.txt'
+  busco_faa: 'busco_genes/{id}.faa'
+  muscle_alignment: 'muscle/{id}.afa'
+  # infile and outfile are hard coded for protdist
+  merged_afa: 'protdist/{seed}/infile'
+  protdist: 'protdist/{seed}/outfile'
+  distances: 'distances.txt'
+
+  # for determining bitscores
+  blast_db: "blast_dbs/{species}.faa"
+  # list of genes, one per line.  Remove to target all genes in target species
+  # target_genes: "targets.txt"
+
+  target_fasta: "scoring/targets/{species}.faa"
+  reciprocal_genes: "scoring/targets/{species}_genes.txt"
+  blast_scores: "scoring/blast/{query}/{database}.txt"
+  bit_scores: 'bit_scores.txt'
+
+# other public references
+urls:
+  busco: "https://busco-data.ezlab.org/v4/data/lineages/eukaryota_odb10.2020-09-10.tar.gz"

@@ -1,28 +1,77 @@
+import random
 configfile: 'config.yaml'
+configfile: 'paths.yaml'
 
 paths = config['paths']
-species = list(config['shortened_names'].values())
+species = list(config['species'].keys())
+target_species = [sp for sp, values in config['species'].items()
+                    if 'target' in values and values['target'] is True]
 
-workdir: '/scratch/gpfs/tcomi/absense'
+if len(target_species) != 1:
+    raise ValueError(f'Must specify exactly one target species, found {len(target_species)}')
+target_species = target_species[0]
+
+other_species = [sp for sp in species if sp != target_species]
+
+
+workdir: config['workdir']
 
 rule all:
     input:
         paths['distances'],
         paths['bit_scores']
 
-for key, url in config['urls']['faa'].items():
-    specie = config['shortened_names'][key]
-    rule:
-        """Save each species' faa file, assumed gzipped."""
-        name: f'download_{specie}'
-        output: expand(paths['faa'], species=specie)
-        resources: wget_instance=1
-        params: url=url
-        shell:
-            'wget --quiet '
-                '-O - '
-                '{params.url} '
-            '| zcat -fq > {output} '
+for specie, values in config['species'].items():
+    if 'file' in values:
+        rule:
+            """Link species local file to expected location."""
+            name: f'link_{specie}'
+            input: values['file']
+            output: expand(paths['faa'], species=specie)
+            shell:
+                'ln -rs {input} {output}'
+
+    elif 'accession' in values:
+        rule:
+            """Download faa file with datasets."""
+            name: f'datasets_{specie}'
+            output: expand(paths['faa'], species=specie)
+            resources: wget_instance=1
+            params: accession=values['accession']
+            conda: 'envs/datasets.yaml'
+            shell:
+                'datasets download genome '
+                    'accession {params.accession} '
+                    '--exclude-genomic-cds '
+                    '--exclude-gff3 '
+                    '--exclude-rna '
+                    '--exclude-seq '
+                    '--filename {specie}.zip '
+                    '--no-progressbar '
+                    '--reference '
+                    '--annotated\n'
+                'unzip -np '
+                    '{specie}.zip '
+                    "'*.faa' "
+                    '> {output}\n'
+                'rm {specie}.zip '
+
+    elif 'url' in values:
+        rule:
+            """Download faa file, assumed gzipped."""
+            name: f'download_{specie}'
+            output: expand(paths['faa'], species=specie)
+            resources: wget_instance=1
+            params: url=values['url']
+            shell:
+                'wget --quiet '
+                    '-O - '
+                    '{params.url} '
+                '| zcat -fq > {output} '
+
+    else:
+        raise ValueError(f'No access method found for {specie}, '
+                'must specify one of [file, accession, url]')
 
 
 checkpoint download_busco:
@@ -91,8 +140,8 @@ checkpoint make_busco_fastas:
     input:
         matches=get_matches,
         faa=expand(paths['faa'], species=species),
-        target_db=expand(paths['blast_db'], species=species[0]),
-        other_dbs=expand(paths['blast_db'], species=species[1:])
+        target_db=expand(paths['blast_db'], species=target_species),
+        other_dbs=expand(paths['blast_db'], species=other_species)
     output:
         directory(Path(paths['busco_faa']).parent)
     conda: 'envs/blast.yaml'
@@ -199,7 +248,10 @@ rule muscle:
 
 def merge_afa_input(wildcards):
     checkpoints.make_busco_fastas.get()
-    ids = glob_wildcards(paths['busco_faa']).id
+    random.seed(wildcards.seed)
+    ids = random.choices(
+            glob_wildcards(paths['busco_faa']).id,
+            k=config['protdist_merged_genes'])
     return expand(paths['muscle_alignment'], id=ids)
 
 rule merge_afa:
@@ -213,7 +265,7 @@ rule merge_afa:
     followed immediately by the species data in the one-letter code.
     """
     input: merge_afa_input
-    output: paths['merged_afa']
+    output: temp(paths['merged_afa'])
     run:
         merged = {specie: [] for specie in species}
         specie = species[0]  # will be overridden
@@ -235,18 +287,38 @@ rule merge_afa:
                 outfile.write(f'{specie:10}{sequence}\n')
 
 rule protdist:
-    input: paths['merged_afa']
-    output: paths['distances']
+    input: ancient(paths['merged_afa'])
+    output: temp(paths['protdist'])
     conda: 'envs/phylip.yaml'
     params:
-        awk_script=r'!/^ /{print $1 "\t" $2}' # print first and second row of new entries (no space at start)
+        path=lambda wildcards, input: Path(input[0]).parent
     shell:
-        'ln -s {input} infile \n'  # hard coded in protdist
+        'cd {params.path}\n'
         'echo Y | protdist >/dev/null \n'  # expected interactive
-        "awk '{params.awk_script}' outfile "  # outfile is also hard coded
-            '| sort -n -k 2,2 '
-            '> {output} \n'
-        'rm infile outfile'
+
+rule merge_protdists:
+    input:
+        expand(paths['protdist'], seed=range(1, config['protdist_replicates']+1))
+    output:
+        paths['distances']
+
+    run:
+        distances = {}
+        for infile in input:
+            for line in open(infile):
+                if line.startswith(' '):
+                    continue
+                species, dist, *_ = line.split()
+                if species not in distances:
+                    distances[species] = []
+                distances[species].append(dist)
+
+        with open(output[0], 'w') as outfile:
+            for species, dists in distances.items():
+                outfile.write(f'{species}\t')
+                outfile.write('\t'.join(dists))
+                outfile.write('\n')
+
 
 rule make_blast_db:
     input: paths['faa']
@@ -269,7 +341,7 @@ ruleorder:
 
 def check_targets(wildcards):
     # non-target species
-    if wildcards.species != species[0]:
+    if wildcards.species != target_species:
         return paths['reciprocal_genes'].format(**wildcards)
     # targets set
     if 'target_genes' in paths:
@@ -300,10 +372,10 @@ rule make_target_fasta_no_targets:
     Only for the target species, others should throw an error
     """
     input:
-        faa=expand(paths['faa'], species=species[0])
+        faa=expand(paths['faa'], species=target_species)
 
     output:
-        expand(paths['target_fasta'], species=species[0])
+        expand(paths['target_fasta'], species=target_species)
 
     shell:
         'cp {input.faa} {output}\n'  # no targets
@@ -330,7 +402,7 @@ rule blast_search:
 rule make_gene_targets:
     input:
         lambda wildcards: expand(paths['blast_scores'],
-                query=species[0],
+                query=target_species,
                 database=wildcards.species)
     output:
         paths['reciprocal_genes']
@@ -348,14 +420,14 @@ rule determine_distances:
     """
     input:
         self_match=expand(paths['blast_scores'],
-                query=species[0],
-                database=species[0]),
+                query=target_species,
+                database=target_species),
         forward=expand(paths['blast_scores'],
-                query=species[0],
-                database=species[1:]),
+                query=target_species,
+                database=other_species),
         reciprocal=expand(paths['blast_scores'],
-                query=species[1:],
-                database=species[0]),
+                query=other_species,
+                database=target_species),
     params:
         species=','.join(species),
         e_val_threshold=config['blast_e_val']
