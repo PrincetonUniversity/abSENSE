@@ -4,14 +4,14 @@ configfile: 'paths.yaml'
 
 paths = config['paths']
 species = list(config['species'].keys())
-target_species = [sp for sp, values in config['species'].items()
-                    if 'target' in values and values['target'] is True]
+focal_species = [sp for sp, values in config['species'].items()
+                    if 'focal' in values and values['focal'] is True]
 
-if len(target_species) != 1:
-    raise ValueError(f'Must specify exactly one target species, found {len(target_species)}')
-target_species = target_species[0]
+if len(focal_species) != 1:
+    raise ValueError(f'Must specify exactly one focal species, found {len(focal_species)}')
+focal_species = focal_species[0]
 
-other_species = [sp for sp in species if sp != target_species]
+other_species = [sp for sp in species if sp != focal_species]
 
 
 workdir: config['workdir']
@@ -126,7 +126,7 @@ checkpoint make_busco_fastas:
     input:
         matches: all hmmsearch combined output files for all ids
         faa: all faa files for all species
-        target_db: blast db for target species
+        focal_db: blast db for focal species
         other_dbs: blast dbs for other species
 
     output:
@@ -140,7 +140,7 @@ checkpoint make_busco_fastas:
     input:
         matches=get_matches,
         faa=expand(paths['faa'], species=species),
-        target_db=expand(paths['blast_db'], species=target_species),
+        focal_db=expand(paths['blast_db'], species=focal_species),
         other_dbs=expand(paths['blast_db'], species=other_species)
     output:
         directory(Path(paths['busco_faa']).parent)
@@ -176,10 +176,10 @@ checkpoint make_busco_fastas:
             # generate fasta file
             'outfile={output}/${{inf%.*}}.faa\n'
             "awk -v genes=$genes '{params.extract_genes}' {input.faa} > $outfile \n"
-            # run blast against target db to check close matches
+            # run blast against focal db to check close matches
             'matches=$(blastp '
                 '-query $outfile '
-                '-db {input.target_db} '
+                '-db {input.focal_db} '
                 '-outfmt "6 sacc" '
                 '-max_target_seqs 1 '
                 '2>/dev/null )\n'
@@ -192,7 +192,7 @@ checkpoint make_busco_fastas:
                 'continue\n'
             'fi\n'
         'done\n'
-        'combined={output}/combined_target.fa\n'
+        'combined={output}/combined_query.fa\n'
         "awk '{params.first_genes}' {output}/*.faa > $combined\n"
         'for db in {input.other_dbs}; do\n'
             # run blast against the other databases
@@ -204,7 +204,7 @@ checkpoint make_busco_fastas:
                 '2>/dev/null '
             # for each line
             '| while read line ; do \n'
-                # get target and queried species as array
+                # get focal and queried species as array
                 'line=($line)\n'
                 # test the queried species is in the same file as target
                 # || : catches the error return code if the file isn't found
@@ -337,25 +337,25 @@ rule make_blast_db:
         'ln -rs {input} {output.alias}'
 
 ruleorder:
-    make_target_fasta > make_target_fasta_no_targets
+    make_query_fasta > make_query_fasta_no_targets
 
 def check_targets(wildcards):
-    # non-target species
-    if wildcards.species != target_species:
+    # non-focal species
+    if wildcards.species != focal_species:
         return paths['reciprocal_genes'].format(**wildcards)
     # targets set
-    if 'target_genes' in paths:
-        return paths['target_genes']
-    # just copy faa for target species, in next rule
+    if 'query_genes' in paths:
+        return paths['query_genes']
+    # just copy faa for focal species, in next rule
     raise ValueError
 
-rule make_target_fasta:
+rule make_query_fasta:
     input:
         target=check_targets,
         faa=paths['faa'],
 
     output:
-        paths['target_fasta']
+        paths['query_fasta']
 
     conda: 'envs/seqkit.yaml'
 
@@ -366,23 +366,23 @@ rule make_target_fasta:
             '--out-file {output} '
             '2>/dev/null\n'
 
-rule make_target_fasta_no_targets:
-    """If no target genes are provided, just copy over fasta.
+rule make_query_fasta_no_targets:
+    """If no query genes are provided, just copy over fasta.
 
-    Only for the target species, others should throw an error
+    Only for the focal species, others should throw an error
     """
     input:
-        faa=expand(paths['faa'], species=target_species)
+        faa=expand(paths['faa'], species=focal_species)
 
     output:
-        expand(paths['target_fasta'], species=target_species)
+        expand(paths['query_fasta'], species=focal_species)
 
     shell:
         'cp {input.faa} {output}\n'  # no targets
 
 def blast_input(wildcards):
     return {
-            'query': paths['target_fasta'].format(species=wildcards.query),
+            'query': paths['query_fasta'].format(species=wildcards.query),
             'db': paths['blast_db'].format(species=wildcards.database),
             }
 
@@ -402,7 +402,7 @@ rule blast_search:
 rule make_gene_targets:
     input:
         lambda wildcards: expand(paths['blast_scores'],
-                query=target_species,
+                query=focal_species,
                 database=wildcards.species)
     output:
         paths['reciprocal_genes']
@@ -420,14 +420,14 @@ rule determine_distances:
     """
     input:
         self_match=expand(paths['blast_scores'],
-                query=target_species,
-                database=target_species),
+                query=focal_species,
+                database=focal_species),
         forward=expand(paths['blast_scores'],
-                query=target_species,
+                query=focal_species,
                 database=other_species),
         reciprocal=expand(paths['blast_scores'],
                 query=other_species,
-                database=target_species),
+                database=focal_species),
     params:
         species=','.join(species),
         e_val_threshold=config['blast_e_val']

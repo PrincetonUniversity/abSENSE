@@ -20,7 +20,7 @@ protdist_replicates: 30    # how many replicates to perform
 species:
   # will be used for labeling files, no spaces, must be unique and 5 characters long
   S_cer:
-    target: true  # only one target may be set
+    focal: true  # only one focal species may be set
     # urls can point to gzipped or non-compressed files
     url: "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_protein.faa.gz"
   S_par:
