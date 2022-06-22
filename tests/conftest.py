@@ -82,6 +82,24 @@ def quick_distances():
 
 
 @pytest.fixture()
+def quick_distances_replicates():
+    return (
+        "S_cer\t0\t0\t0\t0\n"
+        "S_par\t0.051\t0.061\t0.041\t0.052\n"
+        "S_mik\t0.088\t0.098\t0.078\t0.098\n"
+        "S_kud\t0.104\t0.114\t0.094\t0.114\n"
+        "S_bay\t0.108\t0.118\t0.098\t0.107\n"
+        "S_castellii\t0.363\t0.353\t0.373\t0.366\n"
+        "K_waltii\t0.494\t0.484\t0.504\t0.496\n"
+        "A_gossyppi\t0.518\t0.508\t0.528\t0.520\n"
+        "K_lactis\t0.557\t0.547\t0.567\t0.559\n"
+        "A_nidulans\t0.903\t0.893\t0.913\t0.905\n"
+        "S_pombe\t0.922\t0.912\t0.932\t0.924\n"
+        "Y_lipolytica\t0.954\t0.944\t0.964\t0.956\n"
+    )
+
+
+@pytest.fixture()
 def fungi_database_lengths():
     return (
         "#Species\tDBsize\n"
@@ -138,6 +156,7 @@ def default_params(quick_bitscores, quick_distances):
         e_value=0.001,
         predict_all=False,
         plot_all=False,
+        plot="",
         include_only=None,
         gene_lengths=None,
         db_lengths=None,

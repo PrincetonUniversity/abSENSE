@@ -14,7 +14,16 @@ from abSENSE.utilities import find_confidence_interval, sample_parameters
 
 
 def test_init_defaults(default_params):
-    analyzer = AbsenseAnalyzer(default_params)
+    with pytest.warns(UserWarning) as record:
+        analyzer = AbsenseAnalyzer(default_params)
+
+    assert analyzer.odr_model is None
+
+    assert len(record) == 1
+    assert record[0].message.args[0] == (
+        "Only one estimate of distances provided, "
+        "additional values can improve result accuracy"
+    )
 
     assert (analyzer.gene_lengths.index == analyzer.genes).all()
     assert (analyzer.gene_lengths["length"] == default_params.default_gene_length).all()
@@ -23,6 +32,39 @@ def test_init_defaults(default_params):
     assert (analyzer.db_lengths["length"] == default_params.default_db_length).all()
 
 
+def test_init_defaults_zero_variance(default_params):
+    default_params.distances = StringIO(
+        "S_cer\t0\t0\t0\t0\n"
+        "S_par\t0.051\t0.051\t0.051\t0.051\n"  # zero variance
+        "S_mik\t0.088\t0.098\t0.078\t0.098\n"
+        "S_kud\t0.104\t0.114\t0.094\t0.114\n"
+        "S_bay\t0.108\t0.118\t0.098\t0.107\n"
+        "S_castellii\t0.363\t0.353\t0.373\t0.366\n"
+        "K_waltii\t0.494\t0.484\t0.504\t0.496\n"
+        "A_gossyppi\t0.518\t0.508\t0.528\t0.520\n"
+        "K_lactis\t0.557\t0.547\t0.567\t0.559\n"
+        "A_nidulans\t0.903\t0.893\t0.913\t0.905\n"
+        "S_pombe\t0.922\t0.912\t0.932\t0.924\n"
+        "Y_lipolytica\t0.954\t0.944\t0.964\t0.956\n"
+    )
+    with pytest.warns(UserWarning) as record:
+        analyzer = AbsenseAnalyzer(default_params)
+
+    assert analyzer.odr_model is None
+
+    assert len(record) == 1
+    assert record[0].message.args[0] == (
+        "One or more estimates have 0 " "variance, skipping ODR"
+    )
+
+    assert (analyzer.gene_lengths.index == analyzer.genes).all()
+    assert (analyzer.gene_lengths["length"] == default_params.default_gene_length).all()
+
+    assert (analyzer.db_lengths.index == analyzer.species).all()
+    assert (analyzer.db_lengths["length"] == default_params.default_db_length).all()
+
+
+@pytest.mark.filterwarnings("ignore: Only one estimate of distances")
 def test_init_with_include_only(default_params):
     # include only (or the distance index on default)
     # determines the order of bitscore columns
@@ -32,6 +74,7 @@ def test_init_with_include_only(default_params):
     assert (analyzer.bitscores.columns == "S_cer,S_mik,S_par".split(",")).all()
 
 
+@pytest.mark.filterwarnings("ignore: Only one estimate of distances")
 def test_init_with_include_only_missing(default_params):
     default_params.include_only = "S_cer,S_par,S_mik,NOTHERE"
     with pytest.raises(MissingSpeciesException) as error:
@@ -41,6 +84,7 @@ def test_init_with_include_only_missing(default_params):
     )
 
 
+@pytest.mark.filterwarnings("ignore: Only one estimate of distances")
 def test_init_with_missing_db_species(default_params):
     default_params.include_only = "S_cer,S_par,S_mik,S_bay"
     default_params.db_lengths = StringIO(
@@ -54,6 +98,7 @@ def test_init_with_missing_db_species(default_params):
     )
 
 
+@pytest.mark.filterwarnings("ignore: Only one estimate of distances")
 def test_init_with_missing_gene_lengths(default_params):
     default_params.gene_lengths = StringIO(
         "#GeneID\tGeneLength\n"
@@ -73,11 +118,22 @@ def test_init_with_missing_gene_lengths(default_params):
 def analyzer_with_files(fungi_database_lengths, fungi_gene_lengths, default_params):
     default_params.gene_lengths = StringIO(fungi_gene_lengths)
     default_params.db_lenghts = StringIO(fungi_database_lengths)
+    with pytest.warns(UserWarning):
+        return AbsenseAnalyzer(default_params)
+
+
+@pytest.fixture()
+def analyzer_with_replicates(
+    fungi_database_lengths,
+    fungi_gene_lengths,
+    quick_distances_replicates,
+    default_params,
+):
+    default_params.distances = StringIO(quick_distances_replicates)
+    default_params.distances.name = "distances"
+    default_params.gene_lengths = StringIO(fungi_gene_lengths)
+    default_params.db_lenghts = StringIO(fungi_database_lengths)
     return AbsenseAnalyzer(default_params)
-
-
-def test_fit_genes(analyzer_with_files):
-    analyzer_with_files.fit_genes()
 
 
 def test_fit_gene_not_enough(analyzer_with_files):
@@ -131,6 +187,17 @@ def test_fit_normal(analyzer_with_files):
     assert result.bit_threshold == pytest.approx(39.55, abs=1e-2)
 
 
+def test_fit_normal_replicates(analyzer_with_replicates):
+    assert analyzer_with_replicates.odr_model is not None
+    result = next(analyzer_with_replicates.fit_genes())
+    assert isinstance(result, SampledResult)
+    assert result.gene == "NP_010181.2"
+    assert result.a_fit == pytest.approx(2424.33, abs=1e-2)
+    assert result.b_fit == pytest.approx(0.74619, abs=1e-4)
+    assert result.correlation == pytest.approx(-0.976, abs=1e-2)
+    assert result.bit_threshold == pytest.approx(39.55, abs=1e-2)
+
+
 def test_sample_parameters(analyzer_with_files):
     result = sample_parameters(analyzer_with_files.random, 1, 1, [[1, 0], [0, 1]])
     a_vals = result[:, 0]
@@ -163,7 +230,7 @@ def test_find_confidence_interval(analyzer_with_files):
     )
     result = find_confidence_interval(
         analyzer_with_files.random,
-        analyzer_with_files.distances.to_numpy(),
+        np.expand_dims(analyzer_with_files.distances["distance"].to_numpy(), axis=1),
         np.array(
             [
                 [40.1, 1],

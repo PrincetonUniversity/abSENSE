@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import StringIO
 
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 import abSENSE.__main__ as main
@@ -10,7 +11,14 @@ import abSENSE.__main__ as main
 
 def test_defaults(faked_recorder_non_closing, default_params):
     _, files = faked_recorder_non_closing
-    main.perform_analysis(default_params)
+    with pytest.warns(UserWarning) as record:
+        main.perform_analysis(default_params)
+
+    assert len(record) == 1
+    assert record[0].message.args[0] == (
+        "Only one estimate of distances provided, "
+        "additional values can improve result accuracy"
+    )
 
     files["./parameters.tsv"].seek(0)
     result = pd.read_csv(files["./parameters.tsv"], delimiter="\t", comment="#")

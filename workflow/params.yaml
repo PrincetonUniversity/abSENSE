@@ -10,11 +10,9 @@ blast_e_val: 0.001
 
 # Parameters for providing confidence on genetic distance estimate
 # fast
-protdist_merged_genes: 30  # how many busco genes to consider per replicate
-protdist_replicates: 30    # how many replicates to perform
+protdist_replicates: 10    # how many replicates to perform
 
 # precise
-# protdist_merged_genes: 100
 # protdist_replicates: 100
 
 species:

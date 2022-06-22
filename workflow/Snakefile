@@ -1,5 +1,5 @@
 import random
-configfile: 'config.yaml'
+configfile: 'params.yaml'
 configfile: 'paths.yaml'
 
 paths = config['paths']
@@ -248,10 +248,13 @@ rule muscle:
 
 def merge_afa_input(wildcards):
     checkpoints.make_busco_fastas.get()
-    random.seed(wildcards.seed)
-    ids = random.choices(
-            glob_wildcards(paths['busco_faa']).id,
-            k=config['protdist_merged_genes'])
+    all_ids = glob_wildcards(paths['busco_faa']).id
+    # for first file, use all genes
+    ids = all_ids
+    if wildcards.seed != 1:
+        # for other replicates, randomly draw with replacement
+        random.seed(wildcards.seed)
+        ids = random.choices( all_ids, k=len(all_ids))
     return expand(paths['muscle_alignment'], id=ids)
 
 rule merge_afa:

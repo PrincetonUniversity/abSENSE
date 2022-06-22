@@ -83,6 +83,7 @@ def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
         e_value="e value",
         predict_all=False,
         plot_all=False,
+        plot="",
         include_only=include_only,
         gene_lengths=gen_lens,
         db_lengths=db_lens,

@@ -15,6 +15,12 @@ def exponential(domain, scale, decay):
     return scale * np.exp(-decay * domain)
 
 
+@typing.no_type_check
+def odr_exponential(parameters, domain):
+    """Exponential function for odr estimates."""
+    return parameters[0] * np.exp(-parameters[1] * domain)
+
+
 def sample_parameters(
     random: np.random.Generator,
     a_fit: float,

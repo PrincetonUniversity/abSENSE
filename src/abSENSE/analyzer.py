@@ -1,17 +1,24 @@
 """Module for performing the abSENSE analysis."""
 from __future__ import annotations
 
+import warnings
 from typing import Callable, Generator
 
 import numpy as np
 import pandas as pd
+import scipy.odr
 import scipy.optimize
 import scipy.stats
 
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
 from abSENSE.parameters import AbsenseParameters
 from abSENSE.results import ErrorResult, FitResult, NotEnoughDataResult, SampledResult
-from abSENSE.utilities import exponential, find_confidence_interval, sample_parameters
+from abSENSE.utilities import (
+    exponential,
+    find_confidence_interval,
+    odr_exponential,
+    sample_parameters,
+)
 
 
 class AbsenseAnalyzer:
@@ -20,12 +27,36 @@ class AbsenseAnalyzer:
     def __init__(self, params: AbsenseParameters, seed: int = 0):
         self.random = np.random.default_rng(seed)
         self.e_value = params.e_value
-        self.distances = pd.read_csv(
+        distances = pd.read_csv(
             params.distances,
             delimiter="\t",
             comment="#",
-            names=np.array(["specie", "distance"]),
+            header=None,
             index_col=0,
+        )
+
+        stdev = distances.to_numpy().std(axis=1)
+        # the stdev of position 0 is always 0 as distances are relative to that
+        # replace with the other minimum
+        stdev[0] = stdev[1:].min()
+
+        self.odr_model = None
+        if distances.to_numpy().shape[1] == 1:
+            warnings.warn(
+                "Only one estimate of distances provided, additional "
+                "values can improve result accuracy"
+            )
+        elif (stdev == 0).any():
+            warnings.warn("One or more estimates have 0 variance, skipping ODR")
+        else:
+            self.odr_model = scipy.odr.Model(odr_exponential)
+
+        self.distances = pd.DataFrame(
+            data={
+                "distance": distances.to_numpy().mean(axis=1),
+                "dist_stdev": stdev,
+            },
+            index=distances.index.rename("specie"),
         )
 
         self.bitscores = pd.read_csv(
@@ -125,7 +156,7 @@ class AbsenseAnalyzer:
             Generator of FitResults for each gene
         """
         for gene, bitscore in self.bitscores.iterrows():
-            if self.gene_filter(gene):
+            if self.gene_filter(str(gene)):
                 yield self.fit_gene(str(gene), bitscore)
 
     def fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
@@ -156,6 +187,19 @@ class AbsenseAnalyzer:
                 bounds=((-np.inf, 0), (np.inf, np.inf)),
             )
             (a_fit, b_fit), covariance = fit_result[:2]
+
+            if self.odr_model is not None:
+                estimate = scipy.odr.ODR(
+                    scipy.odr.RealData(
+                        data.loc[in_fit, "distance"],
+                        data.loc[in_fit, "score"],
+                        sx=data.loc[in_fit, "dist_stdev"],
+                    ),
+                    self.odr_model,
+                    beta0=[a_fit, b_fit],
+                ).run()
+                a_fit, b_fit = estimate.beta
+                covariance = estimate.cov_beta
         except (RuntimeError, scipy.optimize.OptimizeWarning):
             return ErrorResult(gene)
 
@@ -170,7 +214,7 @@ class AbsenseAnalyzer:
 
         intervals = find_confidence_interval(
             self.random,
-            self.distances.to_numpy(),
+            np.expand_dims(self.distances["distance"].to_numpy(), axis=1),
             sample_parameters(self.random, a_fit, b_fit, covariance),
             bit_threshold,
             index=self.species,
@@ -179,7 +223,7 @@ class AbsenseAnalyzer:
         result = data.join(intervals).assign(
             ambiguous=ambiguous,
             in_fit=in_fit,
-            prediction=predictions,
+            prediction=predictions["distance"],
         )
 
         return SampledResult(
