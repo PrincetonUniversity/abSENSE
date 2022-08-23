@@ -181,8 +181,8 @@ class AbsenseAnalyzer:
                 if value == 0 or np.isnan(value):
                     continue
                 val_bitscore = bitscore.copy()
-                val_bitscore[species] = 0  # set to 0
-                fits[species] = self._fit_gene(gene, val_bitscore)
+                val_bitscore[species] = 0  # set species of interest bitscore to 0
+                fits[str(species)] = self._fit_gene(gene, val_bitscore)
             return ValidationResult(gene, fits, bitscore)
 
         return self._fit_gene(gene, bitscore)

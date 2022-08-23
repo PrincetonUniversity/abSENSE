@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class Recorder(ABC):
     """Base class of an object for recording results."""
 
-    def __init__(self, params: AbsenseParameters, species: pd.Series):
+    def __init__(self, params: AbsenseParameters, species: pd.Index):
         os.makedirs(params.output_directory, exist_ok=True)
         self.output_dir = params.output_directory
         self.species = species
@@ -68,7 +68,7 @@ class Recorder(ABC):
         self._info_file.write(f"E-value threshold: {params.e_value}\n")
 
     @staticmethod
-    def build_recorder(params: AbsenseParameters, species: pd.Series) -> Recorder:
+    def build_recorder(params: AbsenseParameters, species: pd.Index) -> Recorder:
         """Factory method to return Recorder subtype based on parameters."""
         if params.validate:
             return ValidationRecorder(params, species)
@@ -78,7 +78,7 @@ class Recorder(ABC):
 class FileRecorder(Recorder):
     """Contains file handles to record absense analysis results as text files."""
 
-    def __init__(self, params: AbsenseParameters, species: pd.Series):
+    def __init__(self, params: AbsenseParameters, species: pd.Index):
         super().__init__(params, species)
         self.predict_all = params.predict_all
         self.should_plot = params.plot_test()
@@ -275,7 +275,7 @@ class FileRecorder(Recorder):
 class ValidationRecorder(Recorder):
     """Contains file handles to record absense analysis results as text files."""
 
-    def __init__(self, params: AbsenseParameters, species: pd.Series):
+    def __init__(self, params: AbsenseParameters, species: pd.Index):
         super().__init__(params, species)
         self.species = species
         self.results = pd.DataFrame(
