@@ -26,12 +26,13 @@ class Recorder(ABC):
         self._info_file: TextIO | None = None
 
     @abstractmethod
+    @contextmanager
     def open(self) -> Generator[Recorder, None, None]:
-        ...
+        """Context managed resources."""
 
     @abstractmethod
     def write_headers(self) -> None:
-        ...
+        """Called once prior to streaming data, setup headers."""
 
     def write_info(self, params: AbsenseParameters) -> None:
         """Write the run information to the info file."""
@@ -68,6 +69,7 @@ class Recorder(ABC):
 
     @staticmethod
     def build_recorder(params: AbsenseParameters, species: pd.series) -> Recorder:
+        """Factory method to return Recorder subtype based on parameters."""
         if params.validate:
             return ValidationRecorder(params, species)
         return FileRecorder(params, species)
@@ -286,6 +288,7 @@ class ValidationRecorder(Recorder):
             "",
             index=self.species,
         )
+        self._result_file: None | TextIO = None
 
     @contextmanager
     def open(self) -> Generator[Recorder, None, None]:
@@ -347,6 +350,6 @@ class ValidationRecorder(Recorder):
         if "p_values" in result:
             self.p_values = self.p_values.combine(
                 result["p_values"],
-                lambda a, b: a + b + ",",
+                lambda a, b: str(a) + str(b) + ",",
                 fill_value="",
             )

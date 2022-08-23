@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from abSENSE.recorder import Recorder
+from abSENSE.recorder import FileRecorder, Recorder, ValidationRecorder
 
 
 class FitResult:
@@ -25,6 +25,8 @@ class FitResult:
         Args:
             recorder: a Recorder
         """
+        if not isinstance(recorder, FileRecorder):
+            raise ValueError()
         recorder.write_gene(self.gene)
 
 
@@ -38,6 +40,8 @@ class ErrorResult(FitResult):
 
     def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
+        if not isinstance(recorder, FileRecorder):
+            raise ValueError()
         recorder.analysis_error(predictions=self.predictions)
 
 
@@ -50,6 +54,8 @@ class NotEnoughDataResult(FitResult):
 
     def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
+        if not isinstance(recorder, FileRecorder):
+            raise ValueError()
         recorder.not_enough_data()
 
 
@@ -76,6 +82,8 @@ class SampledResult(FitResult):
 
     def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
+        if not isinstance(recorder, FileRecorder):
+            raise ValueError()
         recorder.plot(result=self)
 
         recorder.write_params(self.a_fit, self.b_fit)
@@ -104,10 +112,12 @@ class ValidationResult(FitResult):
         self.bitscore = bitscore
 
     def record_to(self, recorder: Recorder) -> None:
+        if not isinstance(recorder, ValidationRecorder):
+            raise ValueError()
         result = self._analyze_fits()
         recorder.aggregate(result)
 
-    def _analyze_fits(self):
+    def _analyze_fits(self) -> pd.DataFrame:
         stats = {}
         for species, result in self.fits.items():
             if not isinstance(result, SampledResult):

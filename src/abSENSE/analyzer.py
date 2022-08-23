@@ -185,8 +185,7 @@ class AbsenseAnalyzer:
                 fits[species] = self._fit_gene(gene, val_bitscore)
             return ValidationResult(gene, fits, bitscore)
 
-        else:
-            return self._fit_gene(gene, bitscore)
+        return self._fit_gene(gene, bitscore)
 
     def _fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
         """Fit a gene helper function.
@@ -243,7 +242,7 @@ class AbsenseAnalyzer:
 
         intervals = find_confidence_interval(
             self.random,
-            np.expand_dims(self.distances["distance"].to_numpy(), axis=1),
+            np.expand_dims(self.distances["distance"].to_numpy(), axis=1),  # type: ignore[no-untyped-call]
             sample_parameters(self.random, a_fit, b_fit, covariance),
             bit_threshold,
             index=self.species,

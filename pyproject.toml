@@ -94,7 +94,9 @@ ignore_missing_imports = true
 
 [tool.isort]
 profile = "black"
-skip = ["workflow/scripts/join_blast_results.py"]
+# adding future annotations to snakemake scripts breaks the workflow
+skip_glob = ["workflow/scripts/*"]
+filter_files = true
 
 
 [tool.pylint]
