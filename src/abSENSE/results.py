@@ -105,7 +105,9 @@ class SampledResult(FitResult):
 class ValidationResult(FitResult):
     """Analysis result of iterative validation."""
 
-    def __init__(self, gene: str, fits: dict[str, FitResult], bitscore: pd.Series):
+    def __init__(
+        self, gene: str, fits: dict[str, FitResult], bitscore: pd.Series[float]
+    ):
         super().__init__(gene)
         # key is species which was set to 0, value is resulting fit
         self.fits = fits

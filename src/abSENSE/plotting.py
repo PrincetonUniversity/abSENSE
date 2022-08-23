@@ -118,7 +118,7 @@ class FitPlot:
         a_fit: float,
         b_fit: float,
         covariance: npt.NDArray[np.float64],
-    ) -> tuple[npt.NDArray[np.float64], pd.Series, pd.Series]:
+    ) -> tuple[npt.NDArray[np.float64], pd.Series[float], pd.Series[float]]:
         """Interpolate fits for smooth plotting.
 
         Args:

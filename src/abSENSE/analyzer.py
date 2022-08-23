@@ -118,11 +118,11 @@ class AbsenseAnalyzer:
         """Checks that the requested species are present in the bitscores and lengths."""
         # all species in species are in bitscores
         self.bitscores = self.bitscores.loc[
-            :, self.bitscores.columns.isin(self.species)
+            :, self.bitscores.columns.isin(self.species)  # type: ignore[index]
         ]
         # species not found in column
         if not self.species.isin(self.bitscores.columns).all():
-            missing = list(self.species[~self.species.isin(self.bitscores.columns)])
+            missing = list(self.species[~self.species.isin(self.bitscores.columns)])  # type: ignore[index]
             raise MissingSpeciesException(
                 "Unable to find all requested species in bitscores. "
                 f"Missing: {missing}"
@@ -132,7 +132,7 @@ class AbsenseAnalyzer:
         self.bitscores = self.bitscores[self.species]
 
         if not self.species.isin(self.db_lengths.index).all():
-            missing = list(self.species[~self.species.isin(self.db_lengths.index)])
+            missing = list(self.species[~self.species.isin(self.db_lengths.index)])  # type: ignore[index]
             raise MissingSpeciesException(
                 "Unable to find all requested species in database lengths. "
                 f"Missing: {missing}"
@@ -142,7 +142,7 @@ class AbsenseAnalyzer:
         """Checks that the genes present in bitscores are found in gene lengths."""
 
         if not self.genes.isin(self.gene_lengths.index).all():
-            missing = list(self.genes[~self.genes.isin(self.gene_lengths.index)])
+            missing = list(self.genes[~self.genes.isin(self.gene_lengths.index)])  # type: ignore[index]
             raise MissingGeneException(
                 "Unable to find all requested genes in gene lengths. "
                 f"Missing: {missing}"
@@ -166,7 +166,7 @@ class AbsenseAnalyzer:
             if self.gene_filter(str(gene)):
                 yield self.fit_gene(str(gene), bitscore)
 
-    def fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
+    def fit_gene(self, gene: str, bitscore: pd.Series[float]) -> FitResult:
         """Fit a gene.
 
         If validating, will return a MultiFitResult.
@@ -176,7 +176,7 @@ class AbsenseAnalyzer:
             bitscore: the bitscores for the gene
         """
         if self.validate:
-            fits = {}
+            fits: dict[str, FitResult] = {}
             for species, value in bitscore[1:].iteritems():
                 if value == 0 or np.isnan(value):
                     continue
@@ -187,7 +187,7 @@ class AbsenseAnalyzer:
 
         return self._fit_gene(gene, bitscore)
 
-    def _fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
+    def _fit_gene(self, gene: str, bitscore: pd.Series[float]) -> FitResult:
         """Fit a gene helper function.
 
         Args:
@@ -200,7 +200,6 @@ class AbsenseAnalyzer:
             right_index=True,
         )
 
-        gene_length = self.gene_lengths.loc[gene]
         ambiguous = data["score"].isna()
         in_fit = ~data["score"].isna() & (data["score"] != 0)
 
@@ -236,6 +235,7 @@ class AbsenseAnalyzer:
         if np.isinf(covariance).any():
             return ErrorResult(gene, predictions=predictions["distance"])
 
+        gene_length = float(self.gene_lengths.loc[gene])
         bit_threshold = self.bit_threshold(gene_length)
         global_threshold = bit_threshold.mean()["bit_threshold"]
         correlation = self.correlation(data.score)
@@ -273,7 +273,7 @@ class AbsenseAnalyzer:
         )
         return pd.DataFrame({"bit_threshold": result["length"]}, index=result.index)
 
-    def correlation(self, scores: pd.Series) -> float:
+    def correlation(self, scores: pd.Series[float]) -> float:
         """For the given distance/scores, estimate the correlation."""
         data = self.distances.assign(score=scores)
         data = data[data.score > 0]
