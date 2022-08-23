@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from abSENSE.parameters import AbsenseParameters
-from abSENSE.recorder import FileRecorder
+from abSENSE.recorder import Recorder
 from abSENSE.results import SampledResult
 
 
@@ -83,6 +83,7 @@ def test_write_info(faked_recorder, genelenfile, dblenfile, pred_species):
         e_value="e value",
         predict_all=False,
         plot_all=False,
+        validate=False,
         plot="",
         include_only=include_only,
         gene_lengths=gen_lens,
@@ -312,21 +313,21 @@ def test_write_result(
 def test_plot(default_params, mocker):
     mocker.patch("abSENSE.recorder.os.makedirs")
     default_params.plot_all = True
-    recorder = FileRecorder(default_params, [])
+    recorder = Recorder.build_recorder(default_params, [])
     result = StringIO(
-        ",distance,score,p_values,low_interval,high_interval,ambiguous,in_fit,prediction\n"
-        "S_cer,0.0,2284.0,0.0,2260.2,2467.68,False,True,2359.91\n"
-        "S_par,0.05,2254.0,0.0,2187.99,2378.63,False,True,2279.92\n"
-        "S_mik,0.09,2234.0,0.0,2136.21,2316.95,False,True,2223.59\n"
-        "S_kud,0.104,2197.0,0.0,2113.86,2291.22,False,True,2199.67\n"
-        "S_bay,0.108,2200.0,0.0,2108.34,2284.71,False,True,2193.73\n"
-        "S_castellii,0.36,1895.0,0.0,1765.16,1928.92,False,True,1846.31\n"
-        "K_waltii,0.49,1767.0,0.0,1600.4,1778.84,False,True,1689.81\n"
-        "A_gossyppi,0.52,1736.0,0.0,1571.01,1753.6,False,True,1662.61\n"
-        "K_lactis,0.56,1691.0,0.0,1525.83,1711.85,False,True,1619.34\n"
-        "A_nidulans,0.9,1099.0,0.0,1164.61,1395.01,False,True,1281.56\n"
-        "S_pombe,0.92,1194.0,0.0,1147.89,1379.32,False,True,1265.21\n"
-        "Y_lipolytica,0.95,1297.0,0.0,1119.85,1353.19,False,True,1238.13\n"
+        ",distance,score,p_values,low_interval,high_interval,ambiguous,in_fit,prediction,dist_stdev\n"
+        "S_cer,0.0,2284.0,0.0,2260.2,2467.68,False,True,2359.91,1\n"
+        "S_par,0.05,2254.0,0.0,2187.99,2378.63,False,True,2279.92,1\n"
+        "S_mik,0.09,2234.0,0.0,2136.21,2316.95,False,True,2223.59,1\n"
+        "S_kud,0.104,2197.0,0.0,2113.86,2291.22,False,True,2199.67,1\n"
+        "S_bay,0.108,2200.0,0.0,2108.34,2284.71,False,True,2193.73,1\n"
+        "S_castellii,0.36,1895.0,0.0,1765.16,1928.92,False,True,1846.31,1\n"
+        "K_waltii,0.49,1767.0,0.0,1600.4,1778.84,False,True,1689.81,1\n"
+        "A_gossyppi,0.52,1736.0,0.0,1571.01,1753.6,False,True,1662.61,1\n"
+        "K_lactis,0.56,1691.0,0.0,1525.83,1711.85,False,True,1619.34,1\n"
+        "A_nidulans,0.9,1099.0,0.0,1164.61,1395.01,False,True,1281.56,1\n"
+        "S_pombe,0.92,1194.0,0.0,1147.89,1379.32,False,True,1265.21,1\n"
+        "Y_lipolytica,0.95,1297.0,0.0,1119.85,1353.19,False,True,1238.13,1\n"
     )
     df = pd.read_csv(result, index_col=0)
     covariance = [[1.69e03, 1.20e00], [1.20e00, 1.82e-03]]
@@ -349,21 +350,21 @@ def test_plot(default_params, mocker):
 def test_plot_interpolated(default_params, mocker):
     mocker.patch("abSENSE.recorder.os.makedirs")
     default_params.plot_all = True
-    recorder = FileRecorder(default_params, [])
+    recorder = Recorder.build_recorder(default_params, [])
     result = StringIO(
-        ",distance,score,p_values,low_interval,high_interval,ambiguous,in_fit,prediction\n"
-        "S_cer,0.0,352.0,0.0,340.2397797315502,363.6119751420536,False,True,352.34734052045684\n"
-        "S_par,0.051,171.0,2.659628935736003e-38,143.35192031605413,194.21790598475133,False,True,168.53197986670452\n"
-        "S_mik,0.08800000000000001,92.8,5.933125751798271e-11,76.04084482029185,122.02297852984503,False,True,98.69974465645257\n"
-        "S_kud,0.10400000000000001,82.0,3.993489447692749e-06,57.26044922851021,100.11382037310618,False,True,78.31290016903162\n"
-        "S_bay,0.10800000000000001,0.0,2.8986806501042924e-05,53.27984272463878,95.12761609215814,False,False,73.91160397821581\n"
-        "S_castellii,0.363,0.0,1.0,-1.6973045300440253,5.503161698002151,False,False,1.8504154754087632\n"
-        "K_waltii,0.494,0.0,1.0,-1.1019801810161045,1.6744685716904901,False,False,0.2783344536876363\n"
-        "A_gossyppi,0.518,0.0,1.0,-0.9622721726725029,1.3809148499246369,False,False,0.19671745018170525\n"
-        "K_lactis,0.557,0.0,1.0,-0.7618769645703248,1.0033872194043867,False,False,0.11192220370314998\n"
-        "A_nidulans,0.903,0.0,1.0,-0.0731876805054268,0.07511789426512828,False,False,0.0007515837789458042\n"
-        "S_pombe,0.922,0.0,1.0,-0.06373870069810762,0.06514697376269933,False,False,0.0005710237430386822\n"
-        "Y_lipolytica,0.9540000000000001,0.0,1.0,-0.05100568090545824,0.051966598919634975,False,False,0.000359491580422705\n"
+        ",distance,score,p_values,low_interval,high_interval,ambiguous,in_fit,prediction,dist_stdev\n"
+        "S_cer,0.0,352.0,0.0,340.2397797315502,363.6119751420536,False,True,352.34734052045684,1\n"
+        "S_par,0.051,171.0,2.659628935736003e-38,143.35192031605413,194.21790598475133,False,True,168.53197986670452,1\n"
+        "S_mik,0.08800000000000001,92.8,5.933125751798271e-11,76.04084482029185,122.02297852984503,False,True,98.69974465645257,1\n"
+        "S_kud,0.10400000000000001,82.0,3.993489447692749e-06,57.26044922851021,100.11382037310618,False,True,78.31290016903162,1\n"
+        "S_bay,0.10800000000000001,0.0,2.8986806501042924e-05,53.27984272463878,95.12761609215814,False,False,73.91160397821581,1\n"
+        "S_castellii,0.363,0.0,1.0,-1.6973045300440253,5.503161698002151,False,False,1.8504154754087632,1\n"
+        "K_waltii,0.494,0.0,1.0,-1.1019801810161045,1.6744685716904901,False,False,0.2783344536876363,1\n"
+        "A_gossyppi,0.518,0.0,1.0,-0.9622721726725029,1.3809148499246369,False,False,0.19671745018170525,1\n"
+        "K_lactis,0.557,0.0,1.0,-0.7618769645703248,1.0033872194043867,False,False,0.11192220370314998,1\n"
+        "A_nidulans,0.903,0.0,1.0,-0.0731876805054268,0.07511789426512828,False,False,0.0007515837789458042,1\n"
+        "S_pombe,0.922,0.0,1.0,-0.06373870069810762,0.06514697376269933,False,False,0.0005710237430386822,1\n"
+        "Y_lipolytica,0.9540000000000001,0.0,1.0,-0.05100568090545824,0.051966598919634975,False,False,0.000359491580422705,1\n"
     )
     df = pd.read_csv(result, index_col=0)
     covariance = [[26.43, 1.02], [1.02, 0.16]]

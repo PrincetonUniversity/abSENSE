@@ -16,10 +16,32 @@ other_species = [sp for sp in species if sp != focal_species]
 
 workdir: config['workdir']
 
+def all_input(wildcards):
+    result = expand(
+                paths['absense_dir'] + '/{files}',
+                files=[
+                    '99PI_high_prediction.tsv',
+                    '99PI_lower_prediction.tsv',
+                    'failure_probabilities.tsv',
+                    'parameters.tsv',
+                    'predicted_bitscores.tsv',
+                    'run_info.txt',
+                    ],
+                analysis_type='',
+                )
+    if config['validate_genes'] != 0:
+        result.extend(
+                expand(paths['absense_dir'] + '/{files}',
+                    files=[
+                    'run_info.txt',
+                    'validation.tsv',
+                    ],
+                    analysis_type=paths['validation_dir'])
+                )
+    return result
+
 rule all:
-    input:
-        paths['distances'],
-        paths['bit_scores']
+    input: all_input
 
 for specie, values in config['species'].items():
     if 'file' in values:
@@ -72,7 +94,6 @@ for specie, values in config['species'].items():
     else:
         raise ValueError(f'No access method found for {specie}, '
                 'must specify one of [file, accession, url]')
-
 
 checkpoint download_busco:
     """Get busco resources, checkpoint to find id's after download."""
@@ -130,7 +151,7 @@ checkpoint make_busco_fastas:
         other_dbs: blast dbs for other species
 
     output:
-        directory with files were a gene is found for all species
+        directory with files where a gene is found for all species
         with an evalue lower than specified in config.
 
     blast is required in this step, which means the execution has to be shell
@@ -322,7 +343,6 @@ rule merge_protdists:
                 outfile.write('\t'.join(dists))
                 outfile.write('\n')
 
-
 rule make_blast_db:
     input: paths['faa']
     output:
@@ -339,6 +359,21 @@ rule make_blast_db:
             '> /dev/null \n'
         'ln -rs {input} {output.alias}'
 
+rule make_validate_targets:
+    input:
+        faa=expand(paths['faa'], species=focal_species)
+    output: paths['validate_query_genes']
+    params:
+        # print only lines with >, remove > and everything after first space
+        sed_script=r"'/^>/{s/^>// ; s/ .*// ; p}'",
+        genes=lambda wildcards: '' if config['validate_genes'] == -1 else f'-n {config["validate_genes"]}'
+    shell:
+        'sed '
+            '-n {params.sed_script} '
+            '{input} '
+        '| shuf {params.genes} '
+        '> {output} '
+
 ruleorder:
     make_query_fasta > make_query_fasta_no_targets
 
@@ -346,6 +381,8 @@ def check_targets(wildcards):
     # non-focal species
     if wildcards.species != focal_species:
         return paths['reciprocal_genes'].format(**wildcards)
+    if wildcards.analysis_type == paths['validation_dir']:
+        return paths['validate_query_genes']
     # targets set
     if 'query_genes' in paths:
         return paths['query_genes']
@@ -353,6 +390,7 @@ def check_targets(wildcards):
     raise ValueError
 
 rule make_query_fasta:
+    '''Produce fasta for query genes or reciprocal matches.'''
     input:
         target=check_targets,
         faa=paths['faa'],
@@ -378,15 +416,15 @@ rule make_query_fasta_no_targets:
         faa=expand(paths['faa'], species=focal_species)
 
     output:
-        expand(paths['query_fasta'], species=focal_species)
+        expand(paths['query_fasta'], species=focal_species, analysis_type='')
 
     shell:
         'cp {input.faa} {output}\n'  # no targets
 
 def blast_input(wildcards):
     return {
-            'query': paths['query_fasta'].format(species=wildcards.query),
-            'db': paths['blast_db'].format(species=wildcards.database),
+            'query': paths['query_fasta'].format(species=wildcards.query, **wildcards),
+            'db': paths['blast_db'].format(species=wildcards.database, **wildcards),
             }
 
 rule blast_search:
@@ -406,14 +444,32 @@ rule make_gene_targets:
     input:
         lambda wildcards: expand(paths['blast_scores'],
                 query=focal_species,
-                database=wildcards.species)
+                database=wildcards.species,
+                allow_missing=True,
+                )
     output:
         paths['reciprocal_genes']
 
     shell:
         'cut -f2 {input} > {output}'
 
-rule determine_distances:
+def determine_bit_scores_input(wildcards):
+    return {
+            'self_match': expand(paths['blast_scores'],
+                analysis_type=wildcards.analysis_type,
+                query=focal_species,
+                database=focal_species),
+            'forward': expand(paths['blast_scores'],
+                analysis_type=wildcards.analysis_type,
+                query=focal_species,
+                database=other_species),
+            'reciprocal': expand(paths['blast_scores'],
+                analysis_type=wildcards.analysis_type,
+                query=other_species,
+                database=focal_species),
+        }
+
+rule determine_bit_scores:
     """Search for reciprocal best matches.
 
     If the gene is present multiple times, take lowest evalue
@@ -421,16 +477,8 @@ rule determine_distances:
     If the e value passes but reciprocal gene doesn't match => N/A
     If evalue and reciprocal search pass, use forward bitscore
     """
-    input:
-        self_match=expand(paths['blast_scores'],
-                query=focal_species,
-                database=focal_species),
-        forward=expand(paths['blast_scores'],
-                query=focal_species,
-                database=other_species),
-        reciprocal=expand(paths['blast_scores'],
-                query=other_species,
-                database=focal_species),
+    input: unpack(determine_bit_scores_input)
+
     params:
         species=','.join(species),
         e_val_threshold=config['blast_e_val']
@@ -440,3 +488,106 @@ rule determine_distances:
 
     script:
         'scripts/join_blast_results.py'
+
+rule calculate_db_lengths:
+    '''Determine lengths of each species' database with esl-seqstat.'''
+    input: expand(paths['faa'], species=species)
+
+    output: paths['db_lengths']
+
+    conda: 'envs/hmmer.yaml'
+
+    shell:
+        'rm -f {output}\n'  # if it exists
+        'for file in {input} ; do '
+            "size=$(esl-seqstat --amino $file "
+                # find line starting with Total and get digit
+                "| sed -nE '/^Total # residues/s/[^[:digit:]]+//p' )\n"
+            'echo -e $(basename $file .faa)"\\t"$size >> {output} \n'
+        'done '
+
+rule calculate_gene_lengths:
+    '''Determine lengths of each gene in focal species with esl-seqstat.'''
+    input: expand(paths['faa'], species=focal_species)
+
+    output: paths['gene_lengths']
+
+    conda: 'envs/hmmer.yaml'
+
+    shell:
+        'esl-seqstat '
+            '--amino '
+            '-a '
+            '{input} '
+        '| sed -nE '
+        # for lines starting with = capture first word and digit
+            "'/^=/s/^= ([^ ]+) +([[:digit:]]+).*/\\1\\t\\2/p' "
+        '> {output} '
+
+ruleorder:
+    absense_validate > absense  # wildcard constraints for validate to run
+
+rule absense:
+    '''Run absense analysis on query genes.'''
+    input:
+        bit_scores=paths['bit_scores'],
+        distances=paths['distances'],
+        gene_lengths=paths['gene_lengths'],
+        db_lengths=paths['db_lengths'],
+
+    output:
+        expand(paths['absense_dir'] + '/{files}',
+                files=[
+                    '99PI_high_prediction.tsv',
+                    '99PI_lower_prediction.tsv',
+                    'failure_probabilities.tsv',
+                    'parameters.tsv',
+                    'predicted_bitscores.tsv',
+                    'run_info.txt',
+                    ],
+                allow_missing=True)
+
+    params:
+        out_dir=lambda wildcards: paths['absense_dir'].format(**wildcards)
+
+    conda: 'envs/absense.yaml'
+
+    shell:
+        'absense '
+            '--distances {input.distances} '
+            '--bitscores {input.bit_scores} '
+            '--gene-lengths {input.gene_lengths} '
+            '--db-lengths {input.db_lengths} '
+            '--out-dir {params.out_dir} '
+
+rule absense_validate:
+    '''Run absense analysis on validation genes.'''
+    input:
+        bit_scores=paths['bit_scores'],
+        distances=paths['distances'],
+        gene_lengths=paths['gene_lengths'],
+        db_lengths=paths['db_lengths'],
+
+    output:
+        expand(paths['absense_dir'] + '/{files}',
+                files=[
+                    'run_info.txt',
+                    'validation.tsv',
+                    ],
+                allow_missing=True)
+    wildcard_constraints:
+        analysis_type=paths['validation_dir']
+
+    params:
+        out_dir=lambda wildcards: paths['absense_dir'].format(**wildcards)
+
+    conda: 'envs/absense.yaml'
+
+    shell:
+        'absense '
+            '--distances {input.distances} '
+            '--bitscores {input.bit_scores} '
+            '--gene-lengths {input.gene_lengths} '
+            '--db-lengths {input.db_lengths} '
+            '--out-dir {params.out_dir} '
+            '--validate '

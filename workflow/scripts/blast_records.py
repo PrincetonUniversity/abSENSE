@@ -1,4 +1,5 @@
 """Library for blast records and database."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

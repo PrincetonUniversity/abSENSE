@@ -20,6 +20,7 @@ class AbsenseParameters:
     plot_all: bool
     predict_all: bool
     start_time: str
+    validate: bool
 
     @property
     def output_directory(self) -> str:

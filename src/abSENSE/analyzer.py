@@ -12,7 +12,13 @@ import scipy.stats
 
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
 from abSENSE.parameters import AbsenseParameters
-from abSENSE.results import ErrorResult, FitResult, NotEnoughDataResult, SampledResult
+from abSENSE.results import (
+    ErrorResult,
+    FitResult,
+    NotEnoughDataResult,
+    SampledResult,
+    ValidationResult,
+)
 from abSENSE.utilities import (
     exponential,
     find_confidence_interval,
@@ -26,6 +32,7 @@ class AbsenseAnalyzer:
 
     def __init__(self, params: AbsenseParameters, seed: int = 0):
         self.random = np.random.default_rng(seed)
+        self.validate = params.validate
         self.e_value = params.e_value
         distances = pd.read_csv(
             params.distances,
@@ -161,6 +168,28 @@ class AbsenseAnalyzer:
 
     def fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
         """Fit a gene.
+
+        If validating, will return a MultiFitResult.
+
+        Args:
+            gene: gene name
+            bitscore: the bitscores for the gene
+        """
+        if self.validate:
+            fits = {}
+            for species, value in bitscore[1:].iteritems():
+                if value == 0 or np.isnan(value):
+                    continue
+                val_bitscore = bitscore.copy()
+                val_bitscore[species] = 0  # set to 0
+                fits[species] = self._fit_gene(gene, val_bitscore)
+            return ValidationResult(gene, fits, bitscore)
+
+        else:
+            return self._fit_gene(gene, bitscore)
+
+    def _fit_gene(self, gene: str, bitscore: pd.Series) -> FitResult:
+        """Fit a gene helper function.
 
         Args:
             gene: gene name

@@ -15,6 +15,10 @@ protdist_replicates: 10    # how many replicates to perform
 # precise
 # protdist_replicates: 100
 
+# if not 0, run absense in validate mode on number of genes in focal species
+# set to -1 to use all genes
+validate_genes: 100
+
 species:
   # will be used for labeling files, no spaces, must be unique and 5 characters long
   S_cer:

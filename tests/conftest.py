@@ -5,7 +5,7 @@ from io import StringIO
 import pytest
 
 from abSENSE.parameters import AbsenseParameters
-from abSENSE.recorder import FileRecorder
+from abSENSE.recorder import Recorder
 
 
 @pytest.fixture()
@@ -13,7 +13,7 @@ def faked_recorder(mocker, default_params):
     mocker.patch("abSENSE.recorder.os.makedirs")
     default_params.out_dir = "."
     default_params.predict_all = True
-    recorder = FileRecorder(default_params, ["s1", "s2", "s3"])
+    recorder = Recorder.build_recorder(default_params, ["s1", "s2", "s3"])
     # replace files with stringIO for easier testing
     files = {}
 
@@ -31,7 +31,7 @@ def faked_recorder(mocker, default_params):
 def faked_recorder_non_closing(mocker, default_params):
     mocker.patch("abSENSE.recorder.os.makedirs")
     default_params.out_dir = "."
-    recorder = FileRecorder(default_params, ["s1", "s2", "s3"])
+    recorder = Recorder.build_recorder(default_params, ["s1", "s2", "s3"])
     # replace files with stringIO for easier testing
     files = {}
 
@@ -156,6 +156,7 @@ def default_params(quick_bitscores, quick_distances):
         e_value=0.001,
         predict_all=False,
         plot_all=False,
+        validate=False,
         plot="",
         include_only=None,
         gene_lengths=None,

@@ -14,21 +14,23 @@ paths:
   protdist: 'protdist/{seed}/outfile'
   distances: 'distances.txt'
 
-  # for determining bitscores
-  blast_db: "blast_dbs/{species}.faa"
   # list of genes, one per line.  Remove to query all genes in focal species
   # query_genes: "targets.txt"
 
-  query_fasta: "scoring/queries/{species}.faa"
-  reciprocal_genes: "scoring/queries/{species}_genes.txt"
-  blast_scores: "scoring/blast/{query}/{database}.txt"
-  bit_scores: 'bit_scores.txt'
+  # for determining bitscores
+  blast_db: "blast_dbs/{species}.faa"
+  validate_query_genes: "{analysis_type}targets.txt"
+  query_fasta: "{analysis_type}scoring/queries/{species}.faa"
+  reciprocal_genes: "{analysis_type}scoring/queries/{species}_genes.txt"
+  blast_scores: "{analysis_type}scoring/blast/{query}/{database}.txt"
+  bit_scores: '{analysis_type}bit_scores.txt'
+
+  # for absense
+  gene_lengths: 'gene_lengths.txt'
+  db_lengths: 'db_lengths.txt'
+  absense_dir: '{analysis_type}absense_results'
+  validation_dir: 'validate/'  # used as analysis_type for validation
 
 # other public references
 urls:
   busco: "https://busco-data.ezlab.org/v4/data/lineages/eukaryota_odb10.2020-09-10.tar.gz"
-
-## check fit with multiple distances, share plots
-## predict detectability for busco genes to validate distances
-## -> ask what specifically to test, make a setting
-## distribute with pyodide to generate some plots, show sample results

@@ -1,5 +1,4 @@
 """Main method for joining blast records called from snakemake."""
-from __future__ import annotations
 
 from blast_records import BlastRecords
 

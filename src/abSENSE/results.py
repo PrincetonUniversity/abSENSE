@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from abSENSE.recorder import FileRecorder
+from abSENSE.recorder import Recorder
 
 
 class FitResult:
@@ -19,11 +19,11 @@ class FitResult:
         """Test if this fitting result is the same as other."""
         return self.__dict__ == other.__dict__
 
-    def record_to(self, recorder: FileRecorder) -> None:
-        """Record this result to the FileRecorder.
+    def record_to(self, recorder: Recorder) -> None:
+        """Record this result to the Recorder.
 
         Args:
-            recorder: a FileRecorder
+            recorder: a Recorder
         """
         recorder.write_gene(self.gene)
 
@@ -36,7 +36,7 @@ class ErrorResult(FitResult):
         self.predictions = predictions
         self.status = "Analysis Error"
 
-    def record_to(self, recorder: FileRecorder) -> None:
+    def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
         recorder.analysis_error(predictions=self.predictions)
 
@@ -48,7 +48,7 @@ class NotEnoughDataResult(FitResult):
         super().__init__(gene)
         self.status = "Not Enough Data"
 
-    def record_to(self, recorder: FileRecorder) -> None:
+    def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
         recorder.not_enough_data()
 
@@ -74,7 +74,7 @@ class SampledResult(FitResult):
         self.correlation = correlation
         self.covariance = covariance
 
-    def record_to(self, recorder: FileRecorder) -> None:
+    def record_to(self, recorder: Recorder) -> None:
         super().record_to(recorder)
         recorder.plot(result=self)
 
@@ -92,3 +92,34 @@ class SampledResult(FitResult):
             )
 
         recorder.finalize_row()
+
+
+class ValidationResult(FitResult):
+    """Analysis result of iterative validation."""
+
+    def __init__(self, gene: str, fits: dict[str, FitResult], bitscore: pd.Series):
+        super().__init__(gene)
+        # key is species which was set to 0, value is resulting fit
+        self.fits = fits
+        self.bitscore = bitscore
+
+    def record_to(self, recorder: Recorder) -> None:
+        result = self._analyze_fits()
+        recorder.aggregate(result)
+
+    def _analyze_fits(self):
+        stats = {}
+        for species, result in self.fits.items():
+            if not isinstance(result, SampledResult):
+                continue
+
+            true_value = self.bitscore[species]
+            statistics = result.result.loc[species]
+
+            stats[species] = {
+                "count": 1,
+                "p>0.05": 1 if statistics["p_values"] > 0.05 else 0,
+                "p_values": f'{statistics["p_values"]:.4f}',
+                "mre": (statistics["prediction"] - true_value) / true_value,
+            }
+        return pd.DataFrame(stats).transpose()

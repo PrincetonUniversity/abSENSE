@@ -39,13 +39,28 @@ class FitPlot:
             fontweight="bold",
         )
 
-    def scores(self, distance: list[float], score: list[float]) -> None:
+    def scores(
+        self,
+        distance: list[float],
+        score: list[float],
+        xerr: list[float],
+    ) -> None:
         """Plot score values.
 
         Args:
             distance: x values
             score: y values
+            xerr: uncertainty in x values, None to skip plotting errorbar
         """
+        # passing in na values raises a runtime error for errorbar
+        self.axes.errorbar(
+            distance,
+            np.zeros_like(distance),
+            xerr=xerr,
+            ecolor="red",
+            fmt="none",
+            elinewidth=4,
+        )
         self.axes.scatter(
             x=distance,
             y=score,

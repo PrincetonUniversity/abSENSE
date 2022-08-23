@@ -8,7 +8,7 @@ import click
 
 from abSENSE.analyzer import AbsenseAnalyzer
 from abSENSE.parameters import AbsenseParameters
-from abSENSE.recorder import FileRecorder
+from abSENSE.recorder import Recorder
 
 
 @click.command(help="A method to interpret undetected homologs")
@@ -69,6 +69,12 @@ from abSENSE.recorder import FileRecorder
     help="A comma separated list of genes to plot",
 )
 @click.option(
+    "--validate",
+    is_flag=True,
+    help="If set, will remove each gene in the bitscore file and tabulate "
+    "statistics on how well the current distances fit the data.",
+)
+@click.option(
     "--out-dir",
     type=click.Path(file_okay=False),
     help="Name of output directory. " "Default is date and time when analysis was run.",
@@ -88,7 +94,7 @@ def perform_analysis(params: AbsenseParameters) -> None:
     analyzer = AbsenseAnalyzer(params)
     total_genes = analyzer.total_genes()
 
-    with FileRecorder(params, analyzer.species).open() as recorder:
+    with Recorder.build_recorder(params, analyzer.species).open() as recorder:
         recorder.write_info(params)
         recorder.write_headers()
 

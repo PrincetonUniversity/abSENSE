@@ -9,7 +9,13 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 
 from abSENSE.analyzer import AbsenseAnalyzer
 from abSENSE.exceptions import MissingGeneException, MissingSpeciesException
-from abSENSE.results import ErrorResult, NotEnoughDataResult, SampledResult
+from abSENSE.recorder import Recorder
+from abSENSE.results import (
+    ErrorResult,
+    NotEnoughDataResult,
+    SampledResult,
+    ValidationResult,
+)
 from abSENSE.utilities import find_confidence_interval, sample_parameters
 
 
@@ -247,3 +253,39 @@ def test_find_confidence_interval(analyzer_with_files):
     assert cer["p_values"] == pytest.approx(0.089856, abs=1e-4)
     assert cer["low_interval"] == pytest.approx(39.962014, abs=1e-4)
     assert cer["high_interval"] == pytest.approx(40.537986, abs=1e-4)
+
+
+def test_validation(mocker, default_params, analyzer_with_files):
+    analyzer_with_files.validate = True
+    default_params.validate = True
+    default_params.gene_lengths.name = "GENE"
+
+    mocker.patch("abSENSE.recorder.os.makedirs")
+    default_params.out_dir = "."
+    recorder = Recorder.build_recorder(default_params, analyzer_with_files.species)
+    # replace files with stringIO for easier testing
+    files = {}
+
+    def new_stringIO(*args, **kwargs):
+        result = StringIO()
+        result.close = lambda: None
+        result.name = args[0]
+        files[args[0]] = result
+        return result
+
+    mocker.patch("abSENSE.recorder.open", side_effect=new_stringIO)
+
+    with recorder.open() as rec:
+        rec.write_info(default_params)
+        for result in analyzer_with_files.fit_genes():
+            assert isinstance(result, ValidationResult)
+            result.record_to(rec)
+
+    assert files["./run_info.txt"].getvalue().split("\n")[-2] == (
+        "Run in validation mode"
+    )
+
+    files["./validation.tsv"].seek(0)
+    result = pd.read_csv(files["./validation.tsv"], sep="\t", comment="#", index_col=0)
+    assert (result["mre"].isna()).sum() == 1  # just focal species
+    assert pd.isna(result.iloc[0, -1])  # at first index, last column
