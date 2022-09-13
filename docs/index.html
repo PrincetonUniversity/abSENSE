@@ -1,5 +1,360 @@
 <html>
+    <head>
+        <meta charset="utf-8" name="viewport" content="initial-scale=1, width=device-width"/>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.20.0/full/pyodide.js" crossorigin></script>
+        <!-- Production -->
+        <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/@mui/material@v5.6.1/umd/material-ui.production.min.js" crossorigin></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.7.2/prop-types.min.js" integrity="sha512-ssNhh7jlzc+K93ckIlSXFHHz6fSFv0l619WOv8xbFNRbFOujbasb42LVMOggDrQR1ScJncoWb+KAJx1uF3ipjw==" crossorigin="anonymous"></script>
+        <!-- Development
+        <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+        <script src="https://unpkg.com/@mui/material@v5.6.1/umd/material-ui.development.js" crossorigin></script>
+        -->
+
+        <!-- Can remove this for a pre-processor -->
+        <script src="https://unpkg.com/babel-standalone@6/babel.min.js" crossorigin></script>
+        <!-- Fonts to support Material Design -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+        <!-- Icons to support Material Design -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    </head>
+
     <body>
-        Hello pages
+        <div id="root"> Loading... </div>
+        <script type="text/babel">
+            const DEFAULT_MSG = "Pick a HistFactory JSON workspace to review. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to Henry Schreiner for inspiration.";
+            function Heading(props) {
+                return (
+                    <MaterialUI.Box sx={{ flexGrow: 1, mb: 2 }}>
+                        <MaterialUI.AppBar position="static">
+                            <MaterialUI.Toolbar>
+                            <MaterialUI.Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                                Try pyhf today!
+                            </MaterialUI.Typography>
+                            <MaterialUI.Button href="https://scikit-hep.org/pyhf" color="inherit">pyhf documentation</MaterialUI.Button>
+                            <MaterialUI.Button href="https://github.com/kratsg/try-pyhf" color="inherit">Source</MaterialUI.Button>
+                            <MaterialUI.Button href="https://henryiii.github.io/scikit-hep-repo-review/" color="inherit">Inspiration</MaterialUI.Button>
+
+                            </MaterialUI.Toolbar>
+                        </MaterialUI.AppBar>
+                    </MaterialUI.Box>
+                );
+            }
+
+            function Results(props) {
+                const output = [];
+
+                if(typeof props.results === 'string'){
+                    return (
+                        <MaterialUI.Box sx={{bgcolor: 'background.paper', width: 1}}>
+                            <img
+                              src={`${props.results}`}
+                              srcSet={`${props.results} 2x`}
+                              alt="Plot of the workspace"
+                              loading="lazy"
+                              style={{maxWidth: "100%"}}
+                            />
+                        </MaterialUI.Box>
+                    )
+                }
+
+                props.results.forEach((value, name) => {
+                    const results_components = value.map(result => {
+                        const icon = <MaterialUI.Icon>{name == 'channels' ? 'looks_one' : (name == 'samples' ? 'looks_two' : 'looks_3')}</MaterialUI.Icon>;
+                        const msg = (
+                          <React.Fragment>
+                              <MaterialUI.Typography
+                                  sx={{ display: 'inline' }}
+                                  component="span"
+                                  variant="body2"
+                                  color="text.primary"
+                              >
+                                  {JSON.stringify(result)}
+                              </MaterialUI.Typography>
+                          </React.Fragment>
+                        )
+
+
+                        return (
+                            <MaterialUI.ListItem disablePadding key='{name}-{value}'>
+                                <MaterialUI.ListItemButton>
+                                    <MaterialUI.ListItemIcon>
+                                        {icon}
+                                    </MaterialUI.ListItemIcon>
+                                    <MaterialUI.ListItemText primary={msg} />
+                                </MaterialUI.ListItemButton>
+                            </MaterialUI.ListItem>
+                        );
+                    });
+
+                    output.push(
+                        <li key={`section-${name}`}>
+                            <ul>
+                                <MaterialUI.ListSubheader>{name}</MaterialUI.ListSubheader>
+                                {results_components}
+                            </ul>
+                        </li>
+                    );
+                });
+
+                return (
+                    <MaterialUI.Box sx={{bgcolor: 'background.paper'}} >
+                        <MaterialUI.List subheader={<li />} overflow='auto'>{output}</MaterialUI.List>
+                    </MaterialUI.Box>
+                );
+            }
+
+            async function prepare_pyodide(app) {
+                const pyodide = await loadPyodide({
+                    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.20.0/full/",
+                    stdout: (message) => {app.setState({msg: message, progress: true})}
+                });
+
+                await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
+                await pyodide.runPythonAsync(`
+                    import micropip
+                    await micropip.install(["setuptools", "matplotlib"])
+                    import matplotlib as mpl
+                    import matplotlib.pyplot as plt
+                    import io
+                    import base64
+                `);
+                app.setState({msg: DEFAULT_MSG, progress: false});
+                return pyodide;
+            }
+
+            function MyThemeProvider(props) {
+                const prefersDarkMode = MaterialUI.useMediaQuery('(prefers-color-scheme: dark)');
+
+                const theme = React.useMemo(
+                  () =>
+                    MaterialUI.createTheme({
+                      palette: {
+                        mode: prefersDarkMode ? 'dark' : 'light',
+                      },
+                    }),
+                  [prefersDarkMode],
+                );
+
+                return (
+                    <MaterialUI.ThemeProvider theme={theme}>
+                        {props.children}
+                    </MaterialUI.ThemeProvider>
+                );
+            }
+
+            function a11yPropsTab(index) {
+              return {
+                id: `simple-tab-${index}`,
+                'aria-controls': `simple-tabpanel-${index}`,
+              };
+            }
+
+            function TabPanel(props) {
+              const { children, value, index, ...other } = props;
+
+              return (
+                <div
+                  role="tabpanel"
+                  hidden={value !== index}
+                  id={`simple-tabpanel-${index}`}
+                  aria-labelledby={`simple-tab-${index}`}
+                  {...other}
+                >
+                  {value === index && (
+                    <MaterialUI.Box sx={{ p: 3 }}>
+                      {children}
+                    </MaterialUI.Box>
+                  )}
+                </div>
+              );
+            }
+
+            TabPanel.propTypes = {
+              children: PropTypes.node,
+              index: PropTypes.number.isRequired,
+              value: PropTypes.number.isRequired,
+            };
+
+            class App extends React.Component {
+                constructor(props) {
+                    super(props);
+                    this.state = {
+                        results: new Map(),
+                        spec: null,
+                        selectedFile: null,
+                        msg: DEFAULT_MSG,
+                        progress: false,
+                        tab: "simpleModel",
+                        signal: 5.0,
+                        background: 10.0,
+                        uncert: 1.0,
+                        observed: 12.5,
+                    };
+                }
+
+                componentDidMount() {
+                    this.pyodide_promise = prepare_pyodide(this);
+                }
+
+                handleFileChange = (e) => {
+                    const selectedFile = e.target.files[0];
+                    if (!selectedFile) return;
+
+                    const reader = new FileReader();
+                    reader.onloadend = e => {
+                        this.setState({spec: e.target.result, progress: false, msg: `Loaded ${this.state.selectedFile.name}`});
+                    }
+                    reader.readAsText(selectedFile);
+                    this.setState({selectedFile: selectedFile});
+                }
+
+                handlePlotUploadFile() {
+                    if (!this.state.spec) {
+                        alert(`Please provide a workspace specification!`);
+                        return;
+                    }
+                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
+
+                    this.pyodide_promise.then(pyodide => {
+                        window.spec = JSON.parse(this.state.spec);
+                        const result = pyodide.runPython(`
+                            from js import spec
+                            spec = spec.to_py()
+                            buf = io.BytesIO()
+                            fig.savefig(buf, format='png')
+                            buf.seek(0)
+                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
+                            img_str
+                        `);
+                        delete window.spec;
+                        this.setState({results: result, msg: `Plot for ${this.state.selectedFile.name}`, progress: false});
+                  });
+                }
+
+                handlePlotTextInput() {
+                    if (!this.state.spec) {
+                        alert(`Please provide a workspace specification!`);
+                        return;
+                    }
+                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
+
+                    this.pyodide_promise.then(pyodide => {
+                        window.spec = this.state.spec;
+                        const result = pyodide.runPython(`
+                            from js import spec
+                            fig, ax = plt.subplots(2, dpi=200)
+                            vals = spec.split('\\n')
+                            plt.scatter([int(v.split()[0]) for v in vals], [int(v.split()[1]) for v in vals])
+                            buf = io.BytesIO()
+                            fig.savefig(buf, format='png')
+                            buf.seek(0)
+                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
+                            img_str
+                        `);
+                        delete window.spec;
+                        this.setState({results: result, msg: 'Plot for user-provided input', progress: false});
+                  });
+                }
+
+
+                handlePlot() {
+                    if (this.state.tab == "uploadFile")
+                        return this.handlePlotUploadFile()
+
+                    if (this.state.tab == "textInput")
+                        return this.handlePlotTextInput()
+                }
+
+                render() {
+                    let icon_close = ''
+                    if(this.state.selectedFile){
+                        icon_close = (
+                          <MaterialUI.IconButton
+                              aria-label="close"
+                              onClick={() => {this.setState({selectedFile: null, spec: null, msg: `Deleted ${this.state.selectedFile.name}`})}}
+                              sx={{
+                                  color: (theme) => theme.palette.grey[500],
+                              }}
+                          >
+                              <MaterialUI.Icon>close</MaterialUI.Icon>
+                          </MaterialUI.IconButton>
+                        )
+                    }
+
+                    return (
+                        <MyThemeProvider>
+                            <MaterialUI.CssBaseline />
+                            <MaterialUI.Box>
+                                <Heading />
+                                <MaterialUI.Grid container>
+                                    <MaterialUI.Grid item xs={12}>
+                                        <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 1, mb: 3 }} >
+                                            <MaterialUI.Tabs sx={{flexGrow: 2}} value={this.state.tab} onChange={(e, v) => {this.setState({tab: v})}} aria-label="basic tabs example">
+                                              <MaterialUI.Tab label="Workspace File" value="uploadFile" />
+                                              <MaterialUI.Tab label="Text Input" value="textInput" />
+                                            </MaterialUI.Tabs>
+                                            <MaterialUI.Button onClick={() => this.handlePlot()} variant="contained" size="large" disabled={this.state.progress || (!this.state.selectedFile && this.state.tab == "uploadFile") || (!this.state.spec && this.state.tab == "textInput")}>Plot!</MaterialUI.Button>
+
+                                        </MaterialUI.Stack>
+                                    </MaterialUI.Grid>
+                                    <MaterialUI.Grid item xs={12}>
+                                        <TabPanel value={this.state.tab} index="uploadFile">
+                                            <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 1, mb: 3 }} >
+                                                <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
+                                                  Upload File <input type="file" onChange={this.handleFileChange} value={!this.state.selectedFile ? '' : null} hidden />
+                                                </MaterialUI.Button>
+                                                {icon_close}
+                                                <MaterialUI.Typography variant="body1" component="div" sx={{flexGrow: 2}}>
+                                                    {this.state.selectedFile ? this.state.selectedFile.name : 'Select a file to get started.'}
+                                                </MaterialUI.Typography>
+                                            </MaterialUI.Stack>
+                                        </TabPanel>
+                                        <TabPanel value={this.state.tab} index="textInput">
+                                            <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 1, mb: 3 }} >
+                                                <MaterialUI.TextField
+                                                    id="workspace-text"
+                                                    label="Workspace"
+                                                    helperText="spec.json"
+                                                    variant="filled"
+                                                    autoFocus={true}
+                                                    sx={{flexGrow: 1, m: 1}}
+                                                    value={this.state.spec}
+                                                    multiline
+                                                    minRows={3}
+                                                    onInput={(e) => this.setState({spec: e.target.value})}
+                                                />
+                                            </MaterialUI.Stack>
+                                        </TabPanel>
+                                    </MaterialUI.Grid>
+                                    <MaterialUI.Grid item xs={12}>
+                                        <MaterialUI.Paper elevation={3}>
+                                            <MaterialUI.Box sx={{ p: 2 }}>
+                                                <MaterialUI.Typography variant="body1" component="div">
+                                                    {this.state.msg}
+                                                </MaterialUI.Typography>
+                                                {this.state.progress && <MaterialUI.LinearProgress />}
+                                            </MaterialUI.Box>
+                                          <Results results={this.state.results} />
+                                        </MaterialUI.Paper>
+                                    </MaterialUI.Grid>
+                                </MaterialUI.Grid>
+                            </MaterialUI.Box>
+                        </MyThemeProvider>
+                    );
+                }
+            }
+
+            function main() {
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+
+                root.render(<App />);
+            }
+
+            main();
+
+        </script>
     </body>
 </html>
