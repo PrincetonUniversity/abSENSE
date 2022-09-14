@@ -247,19 +247,33 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         return;
                     }
                     this.setState({"results": new Map(), msg: "Plotting...", progress: true});
-
-                    this.pyodide_promise.then(pyodide => {
-                        window.spec = JSON.parse(this.state.spec);
-                        const result = pyodide.runPython(`
-                            from js import spec
-                            spec = spec.to_py()
-                            buf = io.BytesIO()
-                            fig.savefig(buf, format='png')
-                            buf.seek(0)
-                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
-                            img_str
+		    this.pyodide_promise.then(pyodide => {
+                        window.bitscore = this.state.bitscoreString;
+		        window.distance = this.state.distanceString;
+                        window.e_value_cutoff = this.state.e_value_cutoff;
+                        window.gene_length = this.state.gene_length;
+                        window.db_size = this.state.db_size;
+                        const result = pyodide.runPython(`                                                                                               
+                            from js import bitscore, distance, e_value_cutoff, gene_length, db_size                                   
+                            bitscore = io.StringIO(bitscore)
+                            distance = io.StringIO(distance)
+                            e_value_cutoff = float(e_value_cutoff)
+                            gene_length = float(gene_length)                                                                                             
+                            db_size = float(db_size)                                                                                                     
+                            img_str = ""                                                                                                                 
+                            for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size):
+                                buf = io.BytesIO()                                                                                        
+                                plot.save(buf, format='png')                                                                               
+                                buf.seek(0)                                                                                                 
+                                img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
+                                break                                                                                                                    
+                            img_str                                                                                                                      
                         `);
-                        delete window.spec;
+                        delete window.bitscore;
+		        delete window.distance;
+                        delete window.e_value_cutoff;
+                        delete window.gene_length;
+                        delete window.db_size;
                         this.setState({results: result, msg: `Plot for ${this.state.bitscoreFile.name}`, progress: false});
                   });
                 }
@@ -277,7 +291,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         window.gene_length = this.state.gene_length;
                         window.db_size = this.state.db_size;
                         const result = pyodide.runPython(`
-                            from js import spec,e_value_cutoff,gene_length,db_size
+                            from js import spec, e_value_cutoff, gene_length, db_size
+                            e_value_cutoff = float(e_value_cutoff)
+                            gene_length = float(gene_length)
+                            db_size = float(db_size)
                             img_str = ""
                             for name, plot in pyodide_utilities.get_plots_from_text(spec, e_value_cutoff, gene_length, db_size):
                                 buf = io.BytesIO()
@@ -288,6 +305,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             img_str
                         `);
                         delete window.spec;
+			delete window.e_value_cutoff;
+			delete window.gene_length;
+			delete window.db_size;
                         this.setState({results: result, msg: 'Plot for user-provided input', progress: false});
                   });
                 }
@@ -344,7 +364,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                 <MaterialUI.Tab label="Text Input" value="textInput" />
                                                 <MaterialUI.Tab label="File Upload" value="uploadFile" />
                                             </MaterialUI.Tabs>
-                                            <MaterialUI.Button onClick={() => this.handlePlot()} variant="contained" size="large" disabled={this.state.progress || (!this.state.distanceFile && this.state.tab == "uploadFile") || (!this.state.spec && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+                            <MaterialUI.Button onClick={() => this.handlePlot()}
+			variant="contained"
+			size="large"
+			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.spec && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
