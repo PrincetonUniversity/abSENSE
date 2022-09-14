@@ -65,5 +65,12 @@ def get_plots_from_files(
     analyzer = AbsenseAnalyzer(params)
     for result in analyzer.fit_genes():
         plot = FitPlot()
-        plot.generate_plot(result)
+        if isinstance(result, SampledResult):
+            plot.generate_plot(result)
+        else:
+            if isinstance(result, ErrorResult):
+                plot.write_error(result.gene, "Analysis error.")
+            elif isinstance(result, NotEnoughDataResult):
+                plot.write_error(result.gene, "Not enough data.")
+
         yield result.gene, plot

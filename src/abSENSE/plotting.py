@@ -9,7 +9,6 @@ from matplotlib.patches import Patch
 
 from abSENSE.constants import GREY, ORANGE
 from abSENSE.utilities import exponential, find_confidence_interval, sample_parameters
-from abSENSE.results import SampleResult, ErrorResult, NotEnoughDataResult
 
 
 class FitPlot:
@@ -230,7 +229,7 @@ class FitPlot:
         """Show the plot."""
         plt.show()
 
-    def _generate_plot(self, result: SampledResult):
+    def generate_plot(self, result):
         self.title(result.gene, result.a_fit, result.b_fit, result.correlation)
 
         fit = result.result
@@ -254,12 +253,6 @@ class FitPlot:
             any_ambiguous=fit.ambiguous.any(),
         )
 
-    def generate_plot(self, result):
-        if isinstance(result, SampledResult):
-            self._generate_plot(result)
-        else:
-            self.axes.set_title(f"{result.gene}: ERROR")
-            if isinstance(result, ErrorResult):
-                self.axes.text(0.5, 0.5, "Analysis error.")
-            elif isinstance(result, NotEnoughDataResult):
-                self.axes.text(0.5, 0.5, "Not enough data.")
+    def write_error(self, gene, error):
+        self.axes.set_title(f"{gene}: ERROR")
+        self.axes.text(0.5, 0.5, error, fontsize=30, horizontalalignment='center')
