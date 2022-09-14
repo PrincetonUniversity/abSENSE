@@ -7,7 +7,7 @@ import pandas as pd
 from abSENSE.analyzer import AbsenseAnalyzer
 from abSENSE.parameters import AbsenseParameters
 from abSENSE.plotting import FitPlot
-from abSENSE.results import SampledResult
+from abSENSE.results import SampledResult, ErrorResult, NotEnoughDataResult
 
 def get_plots_from_text(
         data: str,
@@ -64,7 +64,6 @@ def get_plots_from_files(
     )
     analyzer = AbsenseAnalyzer(params)
     for result in analyzer.fit_genes():
-        if isinstance(result, SampledResult):
-            plot = FitPlot()
-            plot.generate_plot(result)
-            yield plot
+        plot = FitPlot()
+        plot.generate_plot(result)
+        yield result.gene, plot
