@@ -272,7 +272,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         window.gene_length = this.state.gene_length;
                         window.db_size = this.state.db_size;
                         const result = pyodide.runPython(`
-                            from js import spec,e_value_cutoff,gene_length,db_size
+                            from js import spec, e_value_cutoff, gene_length, db_size
+                            e_value_cutoff = float(e_value_cutoff)
+                            gene_length = float(gene_length)
+                            db_size = float(db_size)
                             img_str = ""
                             for name, plot in pyodide_utilities.get_plots_from_text(spec, e_value_cutoff, gene_length, db_size):
                                 buf = io.BytesIO()
@@ -283,6 +286,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             img_str
                         `);
                         delete window.spec;
+			delete window.e_value_cutoff
+			delete window.gene_length
+			delete window.db_size
                         this.setState({results: result, msg: 'Plot for user-provided input', progress: false});
                   });
                 }
