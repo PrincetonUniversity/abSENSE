@@ -25,6 +25,7 @@
         <div id="root"> Loading... </div>
         <script type="text/babel">
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
+            const names = ['Troy Comi','Chris Langsfield', 'David Turner'];
             function Heading(props) {
                 return (
                     <MaterialUI.Box sx={{ flexGrow: 1, mb: 2 }}>
@@ -204,10 +205,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         tab: "textInput",
                         e_value_cutoff: 0.001,
                         gene_length: 400,
-                        db_size: 4000000
+                        db_size: 4000000,
+                        gene_select_name: null
                     };
                 }
-
                 componentDidMount() {
                     this.pyodide_promise = prepare_pyodide(this);
                 }
@@ -234,6 +235,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     }
                     reader.readAsText(bitscoreFile);
                     this.setState({bitscoreFile: bitscoreFile});
+                }
+                
+                handleChangeMultiple = (e) => {
+                
                 }
 
                 handlePlotUploadFile() {
@@ -295,7 +300,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     if (this.state.tab == "textInput")
                         return this.handlePlotTextInput()
                 }
-
+                
                 render() {
                     let icon_close_distance = ''
                     if(this.state.distanceFile){
@@ -326,7 +331,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                           </MaterialUI.IconButton>
                         )
                     }
-
+                    
                     return (
                         <MyThemeProvider>
                             <MaterialUI.CssBaseline />
@@ -450,15 +455,30 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                         </TabPanel>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={12}>
-                                        <MaterialUI.Paper elevation={3}>
-                                            <Results results={this.state.results} />
-                                            <MaterialUI.Box sx={{ p: 2 }}>
-                                                {this.state.progress && <MaterialUI.LinearProgress />}
-                                                <MaterialUI.Typography variant="body1" component="div">
-                                                    {this.state.msg}
-                                                </MaterialUI.Typography>
-                                            </MaterialUI.Box>
-                                        </MaterialUI.Paper>
+                                        <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 1, mb: 3 }} >
+                                            <MaterialUI.Select
+                                            multiple
+                                            native
+                                            value={this.gene_select_name}
+                                            onChange={this.handleChangeMultiple}
+                                            label="List of Genes">
+                                              {names.map((name) => (
+                                                <option key={name} value={name}>
+                                                  {name}
+                                                </option>
+                                              ))}
+                                            </MaterialUI.Select>
+
+                                            <MaterialUI.Paper elevation={3}>
+                                                <Results results={this.state.results} />
+                                                <MaterialUI.Box sx={{ p: 2 }}>
+                                                    {this.state.progress && <MaterialUI.LinearProgress />}
+                                                    <MaterialUI.Typography variant="body1" component="div">
+                                                        {this.state.msg}
+                                                    </MaterialUI.Typography>
+                                                </MaterialUI.Box>
+                                            </MaterialUI.Paper>
+                                        </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                 </MaterialUI.Grid>
                             </MaterialUI.Box>
