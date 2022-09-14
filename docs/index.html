@@ -25,7 +25,6 @@
         <div id="root"> Loading... </div>
         <script type="text/babel">
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
-            const names = ['Troy Comi','Chris Langsfield', 'David Turner'];
             function Heading(props) {
                 return (
                     <MaterialUI.Box sx={{ flexGrow: 1, mb: 2 }}>
@@ -120,6 +119,7 @@
                     import io
                     import base64
                     from abSENSE import pyodide_utilities
+                    result_dict = {}
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
                 return pyodide;
@@ -183,7 +183,7 @@
                     super(props);
                     this.state = {
                         results: new Map(),
-                        spec: `Species	Distance	NP_010181.2	NP_009362.1	NP_014555.1	NP_116682.3	NP_011284.1	NP_011878.1	NP_013320.1	NP_014160.2	NP_014890.1
+                        text_input: `Species	Distance	NP_010181.2	NP_009362.1	NP_014555.1	NP_116682.3	NP_011284.1	NP_011878.1	NP_013320.1	NP_014160.2	NP_014890.1
 S_cer	0.000	2284	1027	712	352	308	588	1491	941	394
 S_par	0.051	2254	1016	698	171	225	522	1205	927	264
 S_mik	0.088	2234	1018	696	92.8	179	446	1013	889	254
@@ -206,7 +206,8 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         e_value_cutoff: 0.001,
                         gene_length: 400,
                         db_size: 4000000,
-                        gene_select_name: null
+                        gene_select_name: null,
+                        gene_names: [],
                     };
                 }
                 componentDidMount() {
@@ -236,9 +237,25 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     reader.readAsText(bitscoreFile);
                     this.setState({bitscoreFile: bitscoreFile});
                 }
-                
+
                 handleChangeMultiple = (e) => {
-                
+                    console.log(e.target.value)
+                    this.state.gene_select_name = e.target.value
+                    if(this.state.gene_select_name && this.state.gene_names){
+                        this.pyodide_promise.then(pyodide => {
+                        let results = pyodide.runPython(`
+                            plot = result_dict["${this.state.gene_select_name}"]
+                            buf = io.BytesIO()
+                            plot.save(buf, format='png')
+                            buf.seek(0)
+                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
+                            img_str
+                        `);
+                        this.setState({results: results});
+                      });
+                    }
+
+
                 }
 
                 handlePlotUploadFile() {
@@ -247,68 +264,67 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         return;
                     }
                     this.setState({"results": new Map(), msg: "Plotting...", progress: true});
-		    this.pyodide_promise.then(pyodide => {
+                        this.pyodide_promise.then(pyodide => {
                         window.bitscore = this.state.bitscoreString;
-		        window.distance = this.state.distanceString;
+                        window.distance = this.state.distanceString;
                         window.e_value_cutoff = this.state.e_value_cutoff;
                         window.gene_length = this.state.gene_length;
                         window.db_size = this.state.db_size;
-                        const result = pyodide.runPython(`                                                                                               
-                            from js import bitscore, distance, e_value_cutoff, gene_length, db_size                                   
+                        let gene_list = pyodide.runPython(`
+                            from js import bitscore, distance, e_value_cutoff, gene_length, db_size
+                            # TODO use string interpolation for some of this variables
                             bitscore = io.StringIO(bitscore)
                             distance = io.StringIO(distance)
                             e_value_cutoff = float(e_value_cutoff)
-                            gene_length = float(gene_length)                                                                                             
-                            db_size = float(db_size)                                                                                                     
-                            img_str = ""                                                                                                                 
-                            for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size):
-                                buf = io.BytesIO()                                                                                        
-                                plot.save(buf, format='png')                                                                               
-                                buf.seek(0)                                                                                                 
-                                img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
-                                break                                                                                                                    
-                            img_str                                                                                                                      
+                            gene_length = float(gene_length)
+                            db_size = float(db_size)
+                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                            list(result_dict.keys())
                         `);
                         delete window.bitscore;
-		        delete window.distance;
+                        delete window.distance;
                         delete window.e_value_cutoff;
                         delete window.gene_length;
                         delete window.db_size;
-                        this.setState({results: result, msg: `Plot for ${this.state.bitscoreFile.name}`, progress: false});
+                        // TODO handle case where list is empty
+                        this.setState({gene_select_name: gene_list[0],
+                                       gene_names: gene_list,
+                                       msg: `Plot for ${this.state.bitscoreFile.name}`,
+                                       progress: false});
                   });
                 }
 
                 handlePlotTextInput() {
-                    if (!this.state.spec) {
+                    if (!this.state.text_input) {
                         alert(`Please provide score table!`);
                         return;
                     }
                     this.setState({"results": new Map(), msg: "Plotting...", progress: true});
 
                     this.pyodide_promise.then(pyodide => {
-                        window.spec = this.state.spec;
+                        window.text_input = this.state.text_input;
                         window.e_value_cutoff = this.state.e_value_cutoff;
                         window.gene_length = this.state.gene_length;
                         window.db_size = this.state.db_size;
-                        const result = pyodide.runPython(`
-                            from js import spec, e_value_cutoff, gene_length, db_size
+                        console.log('starting')
+                        let gene_list = pyodide.runPython(`
+                            from js import text_input, e_value_cutoff, gene_length, db_size
                             e_value_cutoff = float(e_value_cutoff)
                             gene_length = float(gene_length)
                             db_size = float(db_size)
-                            img_str = ""
-                            for name, plot in pyodide_utilities.get_plots_from_text(spec, e_value_cutoff, gene_length, db_size):
-                                buf = io.BytesIO()
-                                plot.save(buf, format='png')
-                                buf.seek(0)
-                                img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
-                                break
-                            img_str
-                        `);
-                        delete window.spec;
-			delete window.e_value_cutoff;
-			delete window.gene_length;
-			delete window.db_size;
-                        this.setState({results: result, msg: 'Plot for user-provided input', progress: false});
+                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                            list(result_dict.keys())
+                        `).toJs();
+                        console.log(gene_list)
+                        console.log(gene_list[0])
+                        delete window.text_input;
+                        delete window.e_value_cutoff;
+                        delete window.gene_length;
+                        delete window.db_size;
+                        this.setState({gene_select_name: gene_list[0],
+                                       gene_names: gene_list,
+                                       msg: 'Plot for user-provided input',
+                                       progress: false});
                   });
                 }
 
@@ -320,14 +336,14 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     if (this.state.tab == "textInput")
                         return this.handlePlotTextInput()
                 }
-                
+
                 render() {
                     let icon_close_distance = ''
                     if(this.state.distanceFile){
                         icon_close_distance = (
                           <MaterialUI.IconButton
                               aria-label="close"
-                              onClick={() => {this.setState({distanceFile: null, spec: null, msg: `Deleted ${this.state.distanceFile.name}`})}}
+                              onClick={() => {this.setState({distanceFile: null, text_input: null, msg: `Deleted ${this.state.distanceFile.name}`})}}
                               sx={{
                                   color: (theme) => theme.palette.grey[500],
                               }}
@@ -342,7 +358,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         icon_close_bitscore = (
                           <MaterialUI.IconButton
                               aria-label="close"
-                              onClick={() => {this.setState({bitscoreFile: null, spec: null, msg: `Deleted ${this.state.bitscoreFile.name}`})}}
+                              onClick={() => {this.setState({bitscoreFile: null, text_input: null, msg: `Deleted ${this.state.bitscoreFile.name}`})}}
                               sx={{
                                   color: (theme) => theme.palette.grey[500],
                               }}
@@ -351,7 +367,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                           </MaterialUI.IconButton>
                         )
                     }
-                    
+
                     return (
                         <MyThemeProvider>
                             <MaterialUI.CssBaseline />
@@ -367,7 +383,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             <MaterialUI.Button onClick={() => this.handlePlot()}
 			variant="contained"
 			size="large"
-			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.spec && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
@@ -432,15 +448,15 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                 <MaterialUI.TextField 
                                                     id="workspace-text"
                                                     label="Custom Analysis"
-                                                    helperText="Seperate columns with pipe(|), comma(,) or tab."
+                                                    helperText="Separate columns with pipe(|), comma(,) or tab."
                                                     variant="filled"
                                                     autoFocus={true}
                                                     sx={{flexGrow: 1, m: 1}}
-                                                    value={this.state.spec}
+                                                    value={this.state.text_input}
                                                     multiline
                                                     minRows={3}
                                                     maxRows={9}
-                                                    onInput={(e) => this.setState({spec: e.target.value})}
+                                                    onInput={(e) => this.setState({text_input: e.target.value})}
                                                 />
                                                 <MaterialUI.Stack alignItems="left" sx={{ m: 1, mb: 3 }} >
                                                     <MaterialUI.TextField
@@ -485,7 +501,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                             value={this.gene_select_name}
                                             onChange={this.handleChangeMultiple}
                                             label="List of Genes">
-                                              {names.map((name) => (
+                                              {this.state.gene_names.map((name) => (
                                                 <option key={name} value={name}>
                                                   {name}
                                                 </option>
