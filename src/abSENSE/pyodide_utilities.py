@@ -1,6 +1,7 @@
 """Helper methods for performing analyses with pyodide."""
 
-from io import StringIO
+import base64
+from io import BytesIO, StringIO
 from typing import TextIO
 import pandas as pd
 
@@ -9,13 +10,13 @@ from abSENSE.parameters import AbsenseParameters
 from abSENSE.plotting import FitPlot
 from abSENSE.results import SampledResult, ErrorResult, NotEnoughDataResult
 
-def get_plots_from_text(
+def get_analyzer_from_text(
         data: str,
         e_value: float,
         gene_length: float,
         db_length: float,
     ):
-    """Given text input, yield plots of each fit."""
+    """Given text input, return analyzer."""
     df = pd.read_csv(StringIO(data), sep=r'[\t|,]', engine='python')
 
     distances = StringIO()
@@ -29,7 +30,7 @@ def get_plots_from_text(
     bits.to_csv(bitscores, sep='\t', header=True, index=True, na_rep='N/A')
     bitscores.seek(0)
 
-    return get_plots_from_files(
+    return get_analyzer_from_files(
         bitscores=bitscores,
         distances=distances,
         e_value=e_value,
@@ -37,14 +38,14 @@ def get_plots_from_text(
         db_length=db_length,
     )
 
-def get_plots_from_files(
+def get_analyzer_from_files(
         bitscores: TextIO,
         distances: TextIO,
         e_value: float,
         gene_length: float,
         db_length: float,
     ):
-    """Given file inputs, yield plots of each fit."""
+    """Given file inputs, return analyzer."""
     params = AbsenseParameters(
         bitscores=bitscores,
         distances=distances,
@@ -62,15 +63,26 @@ def get_plots_from_files(
         gene_lengths=None,
         db_lengths=None,
     )
-    analyzer = AbsenseAnalyzer(params)
-    for result in analyzer.fit_genes():
-        plot = FitPlot()
-        if isinstance(result, SampledResult):
-            plot.generate_plot(result)
-        else:
-            if isinstance(result, ErrorResult):
-                plot.write_error(result.gene, "Analysis error.")
-            elif isinstance(result, NotEnoughDataResult):
-                plot.write_error(result.gene, "Not enough data.")
+    return AbsenseAnalyzer(params)
 
-        yield result.gene, plot
+def get_plot(gene: str, analyzer: AbsenseAnalyzer):
+    bitscore = analyzer.bitscores.loc[gene]
+    result = analyzer.fit_gene(gene, bitscore)
+    plot = FitPlot()
+    if isinstance(result, SampledResult):
+        plot.generate_plot(result)
+    else:
+        if isinstance(result, ErrorResult):
+            plot.write_error(result.gene, "Analysis error.")
+        elif isinstance(result, NotEnoughDataResult):
+            plot.write_error(result.gene, "Not enough data.")
+
+    return plot
+
+
+def generate_png_string(plot: FitPlot):
+    buf = BytesIO()
+    plot.save(buf, format='png')
+    buf.seek(0)
+    base64_str = base64.b64encode(buf.read()).decode('UTF-8')
+    return f"data:image/png;base64,{base64_str}"
