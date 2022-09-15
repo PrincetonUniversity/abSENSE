@@ -113,13 +113,10 @@
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.2"])
-                    import matplotlib as mpl
-                    import matplotlib.pyplot as plt
+                    await micropip.install(["setuptools", "matplotlib", "absense"])
                     import io
-                    import base64
                     from abSENSE import pyodide_utilities
-                    result_dict = {}
+                    analyzer = None
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
                 return pyodide;
@@ -247,20 +244,25 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 updatePlot(){
                     if(this.state.gene_select_name && this.state.gene_names){
                         this.pyodide_promise.then(pyodide => {
-                        let results = pyodide.runPython(`
-                            plot = result_dict["${this.state.gene_select_name}"]
-                            buf = io.BytesIO()
-                            plot.save(buf, format='png')
-                            buf.seek(0)
-                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
-                            img_str
-                        `);
-                        this.setState({
-                            results: results,
-                            msg: `Plot for ${this.state.gene_select_name}`,
-                            progress: false,
-                            plot_is_ready: true
-                        });
+                        try{
+                            let results = pyodide.runPython(`
+                                print(analyzer.bitscores.loc["${this.state.gene_select_name}"])
+                                plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
+                                img_str = pyodide_utilities.generate_png_string(plot)
+                                img_str
+                            `);
+                            this.setState({
+                                results: results,
+                                msg: `Plot for ${this.state.gene_select_name}`,
+                                progress: false,
+                                plot_is_ready: true,
+                            });
+                        }
+                        catch(e){
+                            console.log(e.message)
+                            // this.setState({msg: `Error during analysis, full traceback in debug console`,
+                            //                progress: false});
+                        }
                       });
                     }
                 }
@@ -282,9 +284,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 e_value_cutoff = float(${this.state.e_value_cutoff})
                                 gene_length = float(${this.state.gene_length})
                                 db_size = float(${this.state.db_size})
-                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                                analyzer = pyodide_utilities.get_analyzer_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size)
                                 print('Done analyzing')
-                                list(result_dict.keys())
+                                list(analyzer.genes)
                             `);
                             gene_list = gene_list.toJs();
                             delete window.bitscore;
@@ -300,7 +302,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         }
                         catch(e){
                             console.log(e.message)
-                            this.setState({msg: `Error during analysis, recheck formatting`,
+                            this.setState({msg: `Error during analysis, full traceback in debug console`,
                                            progress: false});
                         }
                   });
@@ -321,9 +323,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 e_value_cutoff = float(${this.state.e_value_cutoff})
                                 gene_length = float(${this.state.gene_length})
                                 db_size = float(${this.state.db_size})
-                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                                analyzer = pyodide_utilities.get_analyzer_from_text(text_input, e_value_cutoff, gene_length, db_size)
                                 print('Done analyzing')
-                                list(result_dict.keys())
+                                list(analyzer.genes)
                             `);
                             gene_list = gene_list.toJs();
                             delete window.text_input;
@@ -338,7 +340,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         }
                         catch(e){
                             console.log(e.message)
-                            this.setState({msg: `Error during analysis, recheck formatting`,
+                            this.setState({msg: `Error during analysis, full traceback in debug console`,
                                            progress: false});
                         }
                   });
@@ -358,7 +360,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         this.pyodide_promise.then(pyodide => {
                         let output = pyodide.runPython(`
                             from js import Blob
-                            plot = result_dict["${this.state.gene_select_name}"]
+                            plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
                             buf = io.BytesIO()
                             plot.save(buf, format='svg')
                             buf.seek(0)

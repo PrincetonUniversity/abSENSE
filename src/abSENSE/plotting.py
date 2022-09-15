@@ -216,15 +216,43 @@ class FitPlot:
 
         self.axes.legend(handles, labels, fontsize=9)
 
-    def save(self, filename: str) -> None:
+    def save(self, filename: str, format: str = "svg") -> None:
         """Save this figure to file.
 
         Args:
             filename: the file to save to
         """
-        self.figure.savefig(filename, format="svg")
+        self.figure.savefig(filename, format=format)
 
     @staticmethod
     def show() -> None:
         """Show the plot."""
         plt.show()
+
+    def generate_plot(self, result):
+        self.title(result.gene, result.a_fit, result.b_fit, result.correlation)
+
+        fit = result.result
+
+        self.scores(fit.distance, fit.score, fit.dist_stdev)
+
+        self.fit(
+            fit.distance,
+            a_fit=result.a_fit,
+            b_fit=result.b_fit,
+            covariance=result.covariance,
+            bit_threshold=result.bit_threshold,
+        )
+
+        self.set_axes(fit.distance, fit.index)
+        # test if the species is also ambiguous, that takes precedence
+        self.highlight_not_in_fit(fit.distance, (fit.in_fit | fit.ambiguous))
+        self.highlight_ambiguous(fit.ambiguous)
+        self.show_label(
+            any_not_in_fit=not (fit.in_fit | fit.ambiguous).all(),
+            any_ambiguous=fit.ambiguous.any(),
+        )
+
+    def write_error(self, gene, error):
+        self.axes.set_title(f"{gene}: ERROR")
+        self.axes.text(0.5, 0.5, error, fontsize=30, horizontalalignment='center')
