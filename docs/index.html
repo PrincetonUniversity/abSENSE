@@ -119,6 +119,26 @@
                     import io
                     import base64
                     from abSENSE import pyodide_utilities
+
+                    async def save_file(buf):
+                        try:
+                        
+                            # Read and convert to a JavaScript array
+                            buf.seek(0)
+                            content = to_js(buf.read())
+
+                            # Create a JavaScript Blob and set the Blob type as a PNG
+                            b = Blob.new([content], {type: "image/png"})
+
+                            # Perform the actual file system save 
+                            fileHandle = await window.showSaveFilePicker()
+                            file = await fileHandle.createWritable()
+                            await file.write(b)
+                            await file.close()
+                        
+                        except Exception as e:
+                            console.log('Exception: ' + str(e))
+                            return
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
                 return pyodide;
@@ -182,6 +202,7 @@
                     super(props);
                     this.state = {
                         results: new Map(),
+                        plot_is_ready: false,
                         spec: `Species	Distance	NP_010181.2	NP_009362.1	NP_014555.1	NP_116682.3	NP_011284.1	NP_011878.1	NP_013320.1	NP_014160.2	NP_014890.1
 S_cer	0.000	2284	1027	712	352	308	588	1491	941	394
 S_par	0.051	2254	1016	698	171	225	522	1205	927	264
@@ -256,6 +277,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         `);
                         delete window.spec;
                         this.setState({results: result, msg: `Plot for ${this.state.bitscoreFile.name}`, progress: false});
+                        this.setState({plot_is_ready: true})
                   });
                 }
 
@@ -284,6 +306,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         `);
                         delete window.spec;
                         this.setState({results: result, msg: 'Plot for user-provided input', progress: false});
+                        this.setState({plot_is_ready: true})
                   });
                 }
 
@@ -294,6 +317,36 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 
                     if (this.state.tab == "textInput")
                         return this.handlePlotTextInput()
+                }
+
+                savePlot() {
+                    if (!this.state.spec) {
+                        alert(`Please provide score table!`);
+                        return;
+                    }
+                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
+
+                    this.pyodide_promise.then(pyodide => {
+                        window.spec = this.state.spec;
+                        window.e_value_cutoff = this.state.e_value_cutoff;
+                        window.gene_length = this.state.gene_length;
+                        window.db_size = this.state.db_size;
+                        const result = pyodide.runPython(`
+                            from js import spec, e_value_cutoff, gene_length, db_size, Blob, document, window
+                            img_str = ""
+                            for name, plot in pyodide_utilities.get_plots_from_text(spec, e_value_cutoff, gene_length, db_size):
+                                buf = io.BytesIO()
+                                plot.save(buf, format='png')
+                                buf.seek(0)
+                                blob = Blob.new([buf], {type : 'image/png'})
+                                url = window.URL.createObjectURL(blob) 
+                                window.location.assign(url)
+                                break
+                            buf
+                        `);
+                        delete window.spec;
+                  });
+
                 }
 
                 render() {
@@ -340,6 +393,8 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                 <MaterialUI.Tab label="File Upload" value="uploadFile" />
                                             </MaterialUI.Tabs>
                                             <MaterialUI.Button onClick={() => this.handlePlot()} variant="contained" size="large" disabled={this.state.progress || (!this.state.distanceFile && this.state.tab == "uploadFile") || (!this.state.spec && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+                                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!this.state.plot_is_ready}>Save Plot</MaterialUI.Button>
+
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
