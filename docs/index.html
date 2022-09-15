@@ -26,8 +26,6 @@
         <script type="text/babel">
 
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
-            function createData(name: string, prob: number, bitscore: number, conf: number) {return {name, prob, bitscore, conf };}
-            const rows = [createData('Species1', 0.99, 0.99, 0.99), createData('Species2', 0.1, 0.1,0.1)];
             function Heading(props) {
                 return (
                     <MaterialUI.Box sx={{ flexGrow: 1, mb: 2 }}>
@@ -117,10 +115,11 @@
                 app.setState({msg: "Loading abSENSE packages ... ", progress: true});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.5"])
+                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.6"])
                     import io
                     from abSENSE import pyodide_utilities
                     analyzer = None
+                    missing_homologs = []
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
                 app.setState({absense_ready: true})
@@ -210,6 +209,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
+                        missing_homologs: [],
                         absense_ready: false
                     };
                 }
@@ -252,12 +252,14 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         try{
                             let results = pyodide.runPython(`
                                 print(analyzer.bitscores.loc["${this.state.gene_select_name}"])
-                                plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
+                                plot, missing_homologs = pyodide_utilities.get_plot_and_table("${this.state.gene_select_name}", analyzer)
                                 img_str = pyodide_utilities.generate_png_string(plot)
                                 img_str
                             `);
+                            console.log(pyodide.globals.get('missing_homologs').toJs())
                             this.setState({
                                 results: results,
+                                missing_homologs: pyodide.globals.get('missing_homologs').toJs(),
                                 msg: `Plot for ${this.state.gene_select_name}`,
                                 progress: false
                             });
@@ -364,7 +366,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         this.pyodide_promise.then(pyodide => {
                         let output = pyodide.runPython(`
                             from js import Blob
-                            plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
+                            plot, missing_homologs = pyodide_utilities.get_plot_and_table("${this.state.gene_select_name}", analyzer)
                             buf = io.BytesIO()
                             plot.save(buf, format='svg')
                             buf.seek(0)
@@ -462,9 +464,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                 <MaterialUI.Tab label="File Upload" value="uploadFile" />
                                             </MaterialUI.Tabs>
                             <MaterialUI.Button onClick={() => this.handlePlot()}
-			variant="contained"
-			size="large"
-			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+                                variant="contained"
+                                size="large"
+                                disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Analyze</MaterialUI.Button>
                             <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!(this.state.gene_select_name && this.state.gene_names)}>Save Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
@@ -600,10 +602,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                                     Species name 
                                                                 </MaterialUI.TableCell>
                                                                 <MaterialUI.TableCell  size="small">
-                                                                    Prob. of failure (E=0.001)
+                                                                P(detection<br/>failure | E=0.001)
                                                                 </MaterialUI.TableCell>
                                                                 <MaterialUI.TableCell  size="small">
-                                                                    Predicted bitscore
+                                                                    Predicted<br/>bitscore
                                                                 </MaterialUI.TableCell>
                                                                 <MaterialUI.TableCell  size="small">
                                                                     99% CI
@@ -611,15 +613,15 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                             </MaterialUI.TableRow>
                                                         </MaterialUI.TableHead>
                                                         <MaterialUI.TableBody>
-                                                                {rows.map((row) => (
-                                                                <MaterialUI.TableRow key={row.name}
+                                                                {this.state.missing_homologs.map((row) => (
+                                                                <MaterialUI.TableRow key={row.get('species')}
                                                                         sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                                     >
-                                                                    <MaterialUI.TableCell component="th" scope="row"  size="small">{row.name}
+                                                                    <MaterialUI.TableCell component="th" scope="row"  size="small">{row.get('species')}
                                                                     </MaterialUI.TableCell>
-                                                                    <MaterialUI.TableCell  size="small">{row.prob}</MaterialUI.TableCell>
-                                                                    <MaterialUI.TableCell  size="small">{row.bitscore}</MaterialUI.TableCell>
-                                                                    <MaterialUI.TableCell  size="small">{row.conf}</MaterialUI.TableCell>
+                                                                    <MaterialUI.TableCell  size="small">{row.get('p_value')}</MaterialUI.TableCell>
+                                                                    <MaterialUI.TableCell  size="small">{row.get('bitscore')}</MaterialUI.TableCell>
+                                                                    <MaterialUI.TableCell  size="small">{row.get('interval')}</MaterialUI.TableCell>
                                                                 </MaterialUI.TableRow>
                                                             ))}
                                                         </MaterialUI.TableBody>
