@@ -24,6 +24,7 @@
     <body>
         <div id="root"> Loading... </div>
         <script type="text/babel">
+
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
             function createData(name: string, prob: number, bitscore: number, conf: number) {return {name, prob, bitscore, conf };}
             const rows = [createData('Species1', 0.99, 0.99, 0.99), createData('Species2', 0.1, 0.1,0.1)];
@@ -113,6 +114,7 @@
                 });
 
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
+                app.setState({msg: "Loading abSENSE packages ... ", progress: true});
                 await pyodide.runPythonAsync(`
                     import micropip
                     await micropip.install(["setuptools", "matplotlib", "absense==0.1.5"])
@@ -121,6 +123,7 @@
                     analyzer = None
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
+                app.setState({absense_ready: true})
                 return pyodide;
             }
 
@@ -199,7 +202,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         distanceFile: null,
                         bitscoreString: null,
                         bitscoreFile: null,
-                        msg: DEFAULT_MSG,
+                        msg: "Initializing ... ",
                         progress: false,
                         tab: "textInput",
                         e_value_cutoff: 0.001,
@@ -207,7 +210,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
-                        plot_is_ready: false
+                        absense_ready: false
                     };
                 }
                 componentDidMount() {
@@ -256,8 +259,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             this.setState({
                                 results: results,
                                 msg: `Plot for ${this.state.gene_select_name}`,
-                                progress: false,
-                                plot_is_ready: true,
+                                progress: false
                             });
                         }
                         catch(e){
@@ -381,6 +383,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 }
 
                 render() {
+
                     let icon_close_distance = ''
                     if(this.state.distanceFile){
                         icon_close_distance = (
@@ -428,7 +431,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 onChange={this.handleChangeMultiple}
                                 label="List of Genes"
                                 inputProps={{size: 30}}>
-                                  {this.state.gene_names.map((name, i) => (i==0) ? 
+                                  {this.state.gene_names.map((name, i) => (i==0) ?
                                     (<option key={name} value={name} selected>{name}</option>) :
                                     (<option key={name} value={name}>{name}</option>)
                                   )}
@@ -438,7 +441,15 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         )
                     }
 
-                    return (
+                    return !this.state.absense_ready ? (
+                        <div className="absense_load_progress">
+                            <MaterialUI.Typography variant="h2">Loading abSENSE</MaterialUI.Typography>
+                            <MaterialUI.Typography variant="body1" component="div">
+                                {this.state.msg}
+                            </MaterialUI.Typography>
+                            <MaterialUI.LinearProgress disabled={!this.state.progress} />
+                        </div>
+                     ) : (
                         <MyThemeProvider>
                             <MaterialUI.CssBaseline />
                             <MaterialUI.Box>
@@ -454,7 +465,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 			variant="contained"
 			size="large"
 			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
-                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!this.state.plot_is_ready}>Save Plot</MaterialUI.Button>
+                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!(this.state.gene_select_name && this.state.gene_names)}>Save Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
