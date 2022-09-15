@@ -246,28 +246,8 @@ class FileRecorder(Recorder):
             outfile = f"{self.output_dir}/plots/{result.gene}.svg"
 
         plot = FitPlot()
-        plot.title(result.gene, result.a_fit, result.b_fit, result.correlation)
 
-        fit = result.result
-
-        plot.scores(fit.distance, fit.score, fit.dist_stdev)
-
-        plot.fit(
-            fit.distance,
-            a_fit=result.a_fit,
-            b_fit=result.b_fit,
-            covariance=result.covariance,
-            bit_threshold=result.bit_threshold,
-        )
-
-        plot.set_axes(fit.distance, fit.index)
-        # test if the species is also ambiguous, that takes precedence
-        plot.highlight_not_in_fit(fit.distance, (fit.in_fit | fit.ambiguous))
-        plot.highlight_ambiguous(fit.ambiguous)
-        plot.show_label(
-            any_not_in_fit=not (fit.in_fit | fit.ambiguous).all(),
-            any_ambiguous=fit.ambiguous.any(),
-        )
+        plot.generate_plot(result)
 
         plot.save(outfile)
 

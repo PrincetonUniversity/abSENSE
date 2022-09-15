@@ -24,7 +24,7 @@
     <body>
         <div id="root"> Loading... </div>
         <script type="text/babel">
-    
+
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
             function Heading(props) {
                 return (
@@ -115,17 +115,13 @@
                 app.setState({msg: "Loading abSENSE packages ... ", progress: true});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.2"])
+                    await micropip.install(["setuptools", "matplotlib", "absense"])
                 `);
-               
                 app.setState({msg: "Importing abSENSE packages ... ", progress: true});
                 await pyodide.runPythonAsync(`
-                    import matplotlib as mpl
-                    import matplotlib.pyplot as plt
                     import io
-                    import base64
                     from abSENSE import pyodide_utilities
-                    result_dict = {}
+                    analyzer = None
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
                 app.setState({absense_ready: true})
@@ -254,19 +250,24 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 updatePlot(){
                     if(this.state.gene_select_name && this.state.gene_names){
                         this.pyodide_promise.then(pyodide => {
-                        let results = pyodide.runPython(`
-                            plot = result_dict["${this.state.gene_select_name}"]
-                            buf = io.BytesIO()
-                            plot.save(buf, format='png')
-                            buf.seek(0)
-                            img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
-                            img_str
-                        `);
-                        this.setState({
-                            results: results,
-                            msg: `Plot for ${this.state.gene_select_name}`,
-                            progress: false,
-                        });
+                        try{
+                            let results = pyodide.runPython(`
+                                print(analyzer.bitscores.loc["${this.state.gene_select_name}"])
+                                plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
+                                img_str = pyodide_utilities.generate_png_string(plot)
+                                img_str
+                            `);
+                            this.setState({
+                                results: results,
+                                msg: `Plot for ${this.state.gene_select_name}`,
+                                progress: false
+                            });
+                        }
+                        catch(e){
+                            console.log(e.message)
+                            // this.setState({msg: `Error during analysis, full traceback in debug console`,
+                            //                progress: false});
+                        }
                       });
                     }
                 }
@@ -288,9 +289,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 e_value_cutoff = float(${this.state.e_value_cutoff})
                                 gene_length = float(${this.state.gene_length})
                                 db_size = float(${this.state.db_size})
-                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                                analyzer = pyodide_utilities.get_analyzer_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size)
                                 print('Done analyzing')
-                                list(result_dict.keys())
+                                list(analyzer.genes)
                             `);
                             gene_list = gene_list.toJs();
                             delete window.bitscore;
@@ -306,7 +307,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         }
                         catch(e){
                             console.log(e.message)
-                            this.setState({msg: `Error during analysis, recheck formatting`,
+                            this.setState({msg: `Error during analysis, full traceback in debug console`,
                                            progress: false});
                         }
                   });
@@ -327,9 +328,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 e_value_cutoff = float(${this.state.e_value_cutoff})
                                 gene_length = float(${this.state.gene_length})
                                 db_size = float(${this.state.db_size})
-                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                                analyzer = pyodide_utilities.get_analyzer_from_text(text_input, e_value_cutoff, gene_length, db_size)
                                 print('Done analyzing')
-                                list(result_dict.keys())
+                                list(analyzer.genes)
                             `);
                             gene_list = gene_list.toJs();
                             delete window.text_input;
@@ -344,7 +345,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         }
                         catch(e){
                             console.log(e.message)
-                            this.setState({msg: `Error during analysis, recheck formatting`,
+                            this.setState({msg: `Error during analysis, full traceback in debug console`,
                                            progress: false});
                         }
                   });
@@ -364,7 +365,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         this.pyodide_promise.then(pyodide => {
                         let output = pyodide.runPython(`
                             from js import Blob
-                            plot = result_dict["${this.state.gene_select_name}"]
+                            plot = pyodide_utilities.get_plot("${this.state.gene_select_name}", analyzer)
                             buf = io.BytesIO()
                             plot.save(buf, format='svg')
                             buf.seek(0)
@@ -413,8 +414,35 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                           </MaterialUI.IconButton>
                         )
                     }
+                    let select_gene_window = ''
+                    if(this.state.gene_select_name){
+                        select_gene_window = (
+                            <MaterialUI.Stack alignItems="center" sx={{ m: 1, mb: 0 }}>
+                            <MaterialUI.Box>
+                                <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                    Select a Gene
+                                </MaterialUI.Typography>
+                            </MaterialUI.Box>
+                            <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                <MaterialUI.Select
+                                multiple
+                                native
+                                variant="filled"
+                                value={this.gene_select_name}
+                                onChange={this.handleChangeMultiple}
+                                label="List of Genes"
+                                inputProps={{size: 30}}>
+                                  {this.state.gene_names.map((name, i) => (i==0) ?
+                                    (<option key={name} value={name} selected>{name}</option>) :
+                                    (<option key={name} value={name}>{name}</option>)
+                                  )}
+                                </MaterialUI.Select>
+                            </MaterialUI.Typography>
+                            </MaterialUI.Stack>
+                        )
+                    }
 
-                    return !this.state.absense_ready ? ( 
+                    return !this.state.absense_ready ? (
                         <div className="absense_load_progress">
                             <MaterialUI.Typography variant="h2">Loading abSENSE</MaterialUI.Typography>
                             <MaterialUI.Typography variant="body1" component="div">
@@ -550,28 +578,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={12}>
                                         <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                                            <MaterialUI.Stack alignItems="center" sx={{ m: 1, mb: 0 }}>
-                                                <MaterialUI.Box>
-                                                    <MaterialUI.Typography variant="button" display="block" gutterBottom>
-                                                        Select a Gene
-                                                    </MaterialUI.Typography>
-                                                </MaterialUI.Box>
-                                                <MaterialUI.Typography variant="button" display="block" gutterBottom>
-                                                    <MaterialUI.Select
-                                                    multiple
-                                                    native
-                                                    variant="filled"
-                                                    value={this.gene_select_name}
-                                                    onChange={this.handleChangeMultiple}
-                                                    label="List of Genes"
-                                                    inputProps={{size: 30}}>
-                                                      {this.state.gene_names.map((name, i) => (i==0) ? 
-                                                        (<option key={name} value={name} selected>{name}</option>) :
-                                                        (<option key={name} value={name}>{name}</option>)
-                                                      )}
-                                                    </MaterialUI.Select>
-                                                </MaterialUI.Typography>
-                                            </MaterialUI.Stack>
+                                            {select_gene_window}
                                             <MaterialUI.Paper elevation={3}>
                                                 <Results results={this.state.results} />
                                                 <MaterialUI.Box sx={{ p: 2 }}>
