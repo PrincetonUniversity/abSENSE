@@ -520,28 +520,51 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                 </MaterialUI.Box>
                             </MaterialUI.Paper>
 			    <MaterialUI.TableContainer component={MaterialUI.Paper}>
-                            <MaterialUI.Table sx={{ minWidth: 650 }} aria-label="Missing homologs" size="small">
+                            <MaterialUI.Table stickyHeader sx={{ minWidth: 650 }} aria-label="Missing homologs" size="small" >
                             <MaterialUI.TableHead>
                             <MaterialUI.TableRow>
-                            <MaterialUI.TableCell>Species&nbsp;missing&nbsp;a&nbsp;detected&nbsp;homolog</MaterialUI.TableCell>
-                            <MaterialUI.TableCell>Probability&nbsp;of&nbsp;homolog&nbsp;detection&nbsp;failure&nbsp;(E=0.001)</MaterialUI.TableCell>
-                            <MaterialUI.TableCell>Predicted&nbsp;bitscore</MaterialUI.TableCell>
-                            <MaterialUI.TableCell>99&nbsp;percent&nbsp;confidence&nbsp;confidence&nbsp;interval</MaterialUI.TableCell>
+                            <MaterialUI.TableCell style={{
+                      whiteSpace: "normal",
+                      wordBreak: "-",
+                      width: "150px"
+                    }} size="small">
+                                Species&nbsp;missing&nbsp;a&nbsp;detected&nbsp;homolog 
+                            </MaterialUI.TableCell>
+                            <MaterialUI.TableCell style={{
+                      whiteSpace: "normal",
+                      wordBreak: "-",
+                      width: "150px"
+                    }} size="small">
+                                Probability&nbsp;of&nbsp;homolog&nbsp;detection&nbsp;failure&nbsp;(E=0.001)
+                            </MaterialUI.TableCell>
+                            <MaterialUI.TableCell style={{
+                      whiteSpace: "normal",
+                      wordBreak: "-",
+                      width: "90px"
+                    }}size="small">
+                                Predicted&nbsp;bitscore
+                            </MaterialUI.TableCell>
+                            <MaterialUI.TableCell style={{
+                      whiteSpace: "normal",
+                      wordBreak: "-",
+                      width: "150px"
+                    }}size="small">
+                                99&nbsp;percent&nbsp;confidence&nbsp;confidence&nbsp;interval
+                            </MaterialUI.TableCell>
                             </MaterialUI.TableRow>
                             </MaterialUI.TableHead>
                             <MaterialUI.TableBody>
                             {rows.map((row) => (
                                 <MaterialUI.TableRow
                                     key={row.name}
-                                    sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
                                 >
-                                    <MaterialUI.TableCell component="th" scope="row">
-                                        row.name
+                                    <MaterialUI.TableCell component="th" scope="row" size="small">
+                                    {row.name}
                                     </MaterialUI.TableCell>
-                                    <MaterialUI.TableCell>{row.name}</MaterialUI.TableCell>
-                                    <MaterialUI.TableCell>{row.prob}</MaterialUI.TableCell>
-                                    <MaterialUI.TableCell>{row.bitscore}</MaterialUI.TableCell>
-                                    <MaterialUI.TableCell>{row.conf}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell size="small">{row.prob}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell size="small">{row.bitscore}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell size="small">{row.conf}</MaterialUI.TableCell>
                                     </MaterialUI.TableRow>
                             ))}
                         </MaterialUI.TableBody>
