@@ -239,8 +239,12 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 }
 
                 handleChangeMultiple = (e) => {
-                    console.log(e.target.value)
-                    this.state.gene_select_name = e.target.value
+                    this.state.gene_select_name = e.target.value;
+                    this.updatePlot();
+                }
+
+                updatePlot(){
+                    console.log(this.state)
                     if(this.state.gene_select_name && this.state.gene_names){
                         this.pyodide_promise.then(pyodide => {
                         let results = pyodide.runPython(`
@@ -251,11 +255,13 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
                             img_str
                         `);
-                        this.setState({results: results});
+                        this.setState({
+                            results: results,
+                            msg: `Plot for ${this.state.gene_select_name}`,
+                            progress: false,
+                        });
                       });
                     }
-
-
                 }
 
                 handlePlotUploadFile() {
@@ -279,11 +285,11 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         `).toJs();
                         delete window.bitscore;
                         delete window.distance;
-                        if(gene_list)
-                            this.setState({gene_select_name: gene_list[0],
-                                           gene_names: gene_list,
-                                           msg: `Plot for ${gene_list[0]}`,
-                                           progress: false});
+                        if(gene_list){
+                            this.state.gene_names = gene_list
+                            this.state.gene_select_name = gene_list[0]
+                            this.updatePlot();
+                        }
                         else
                             this.setState({msg: `Error during analysis`,
                                            progress: false});
@@ -311,11 +317,11 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         console.log('done')
                         console.log(gene_list)
                         delete window.text_input;
-                        if(gene_list)
-                            this.setState({gene_select_name: gene_list[0],
-                                           gene_names: gene_list,
-                                           msg: `Plot for ${gene_list[0]}`,
-                                           progress: false});
+                        if(gene_list){
+                            this.state.gene_names = gene_list
+                            this.state.gene_select_name = gene_list[0]
+                            this.updatePlot();
+                        }
                         else
                             this.setState({msg: `Error during analysis`,
                                            progress: false});
