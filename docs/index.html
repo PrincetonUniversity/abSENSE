@@ -495,21 +495,27 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={12}>
                                         <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                                            <MaterialUI.Select
-                                            multiple
-                                            native
-                                            variant="filled"
-                                            value={this.gene_select_name}
-                                            onChange={this.handleChangeMultiple}
-                                            label="List of Genes"
-                                            inputProps={{size: 30}}>
-                                              {this.state.gene_names.map((name) => (
-                                                <option key={name} value={name}>
-                                                  {name}
-                                                </option>
-                                              ))}
-                                            </MaterialUI.Select>
-
+                                            <MaterialUI.Stack alignItems="center" sx={{ m: 1, mb: 0 }}>
+                                                <MaterialUI.Box>
+                                                    <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                                        Select a Gene
+                                                    </MaterialUI.Typography>
+                                                </MaterialUI.Box>
+                                                <MaterialUI.Select
+                                                multiple
+                                                native
+                                                variant="filled"
+                                                value={this.gene_select_name}
+                                                onChange={this.handleChangeMultiple}
+                                                label="List of Genes"
+                                                inputProps={{size: 30}}>
+                                                  {this.state.gene_names.map((name) => (
+                                                    <option key={name} value={name}>
+                                                      {name}
+                                                    </option>
+                                                  ))}
+                                                </MaterialUI.Select>
+                                            </MaterialUI.Stack>
                                             <MaterialUI.Paper elevation={3}>
                                                 <Results results={this.state.results} />
                                                 <MaterialUI.Box sx={{ p: 2 }}>
