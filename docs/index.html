@@ -406,7 +406,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                         <TabPanel value={this.state.tab} index="uploadFile">
                                             <MaterialUI.Stack alignItems="left" direction="row" sx={{ m: 0, mb: 0 }} >
                                                 <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
-                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
+                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 3 }} >
                                                         <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
                                                           Upload Distance <input type="file" onChange={this.handleFileChangeDistance} value={!this.state.distanceFile ? '' : null} hidden />
                                                         </MaterialUI.Button>

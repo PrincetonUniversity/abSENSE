@@ -65,19 +65,29 @@ def get_analyzer_from_files(
     )
     return AbsenseAnalyzer(params)
 
-def get_plot(gene: str, analyzer: AbsenseAnalyzer):
+def get_plot_and_table(gene: str, analyzer: AbsenseAnalyzer):
     bitscore = analyzer.bitscores.loc[gene]
     result = analyzer.fit_gene(gene, bitscore)
     plot = FitPlot()
+    missing_homologs = []
     if isinstance(result, SampledResult):
         plot.generate_plot(result)
+        for species, row in result.result[result.result.score == 0].iterrows():
+            missing_homologs.append(
+                {
+                    'species': species,
+                    'p_value': f"{row.p_values:0.2f}",
+                    'bitscore': f"{row.prediction:0.2f}",
+                    'interval': f"{row.low_interval:0.2f} - {row.high_interval:0.2f}",
+                }
+            )
     else:
         if isinstance(result, ErrorResult):
             plot.write_error(result.gene, "Analysis error.")
         elif isinstance(result, NotEnoughDataResult):
             plot.write_error(result.gene, "Not enough data.")
 
-    return plot
+    return plot, missing_homologs
 
 
 def generate_png_string(plot: FitPlot):
