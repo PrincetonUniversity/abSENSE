@@ -270,30 +270,37 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     }
                     this.setState({"results": new Map(), msg: "Running...", progress: true});
                     this.pyodide_promise.then(async pyodide => {
-                        window.bitscore = this.state.bitscoreString;
-                        window.distance = this.state.distanceString;
-                        let gene_list = await pyodide.runPythonAsync(`
-                            from js import bitscore, distance
-                            bitscore = io.StringIO(bitscore)
-                            distance = io.StringIO(distance)
-                            e_value_cutoff = float(${this.state.e_value_cutoff})
-                            gene_length = float(${this.state.gene_length})
-                            db_size = float(${this.state.db_size})
-                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
-                            print('Done analyzing')
-                            list(result_dict.keys())
-                        `);
-                        gene_list = gene_list.toJs();
-                        delete window.bitscore;
-                        delete window.distance;
-                        if(gene_list){
-                            this.state.gene_names = gene_list
-                            this.state.gene_select_name = gene_list[0]
-                            this.updatePlot();
+                        try {
+                            window.bitscore = this.state.bitscoreString;
+                            window.distance = this.state.distanceString;
+                            let gene_list = await pyodide.runPythonAsync(`
+                                from js import bitscore, distance
+                                bitscore = io.StringIO(bitscore)
+                                distance = io.StringIO(distance)
+                                e_value_cutoff = float(${this.state.e_value_cutoff})
+                                gene_length = float(${this.state.gene_length})
+                                db_size = float(${this.state.db_size})
+                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                                print('Done analyzing')
+                                list(result_dict.keys())
+                            `);
+                            gene_list = gene_list.toJs();
+                            delete window.bitscore;
+                            delete window.distance;
+                            if(gene_list){
+                                this.state.gene_names = gene_list
+                                this.state.gene_select_name = gene_list[0]
+                                this.updatePlot();
+                            }
+                            else
+                                this.setState({msg: `Error during analysis`,
+                                               progress: false});
                         }
-                        else
-                            this.setState({msg: `Error during analysis`,
+                        catch(e){
+                            console.log(e.message)
+                            this.setState({msg: `Error during analysis, recheck formatting`,
                                            progress: false});
+                        }
                   });
                 }
 
@@ -305,26 +312,33 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     this.setState({"results": new Map(), msg: "Running...", progress: true});
 
                     this.pyodide_promise.then(async pyodide => {
-                        window.text_input = this.state.text_input;
-                        let gene_list = await pyodide.runPythonAsync(`
-                            from js import text_input
-                            e_value_cutoff = float(${this.state.e_value_cutoff})
-                            gene_length = float(${this.state.gene_length})
-                            db_size = float(${this.state.db_size})
-                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
-                            print('Done analyzing')
-                            list(result_dict.keys())
-                        `);
-                        gene_list = gene_list.toJs();
-                        delete window.text_input;
-                        if(gene_list){
-                            this.state.gene_names = gene_list
-                            this.state.gene_select_name = gene_list[0]
-                            this.updatePlot();
+                        try {
+                            window.text_input = this.state.text_input;
+                            let gene_list = await pyodide.runPythonAsync(`
+                                from js import text_input
+                                e_value_cutoff = float(${this.state.e_value_cutoff})
+                                gene_length = float(${this.state.gene_length})
+                                db_size = float(${this.state.db_size})
+                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                                print('Done analyzing')
+                                list(result_dict.keys())
+                            `);
+                            gene_list = gene_list.toJs();
+                            delete window.text_input;
+                            if(gene_list){
+                                this.state.gene_names = gene_list
+                                this.state.gene_select_name = gene_list[0]
+                                this.updatePlot();
+                            }
+                            else
+                                this.setState({msg: `Error during analysis`,
+                                               progress: false});
                         }
-                        else
-                            this.setState({msg: `Error during analysis`,
+                        catch(e){
+                            console.log(e.message)
+                            this.setState({msg: `Error during analysis, recheck formatting`,
                                            progress: false});
+                        }
                   });
                 }
 
