@@ -244,7 +244,6 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 }
 
                 updatePlot(){
-                    console.log(this.state)
                     if(this.state.gene_select_name && this.state.gene_names){
                         this.pyodide_promise.then(pyodide => {
                         let results = pyodide.runPython(`
@@ -264,16 +263,16 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                     }
                 }
 
-                handlePlotUploadFile() {
+                async handlePlotUploadFile() {
                     if (!this.state.bitscoreString && !this.state.distanceString) {
                         alert(`Please provide values in distance and bitscore files!`);
                         return;
                     }
-                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
-                        this.pyodide_promise.then(pyodide => {
+                    this.setState({"results": new Map(), msg: "Running...", progress: true});
+                    this.pyodide_promise.then(async pyodide => {
                         window.bitscore = this.state.bitscoreString;
                         window.distance = this.state.distanceString;
-                        let gene_list = pyodide.runPython(`
+                        let gene_list = await pyodide.runPythonAsync(`
                             from js import bitscore, distance
                             bitscore = io.StringIO(bitscore)
                             distance = io.StringIO(distance)
@@ -281,8 +280,10 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             gene_length = float(${this.state.gene_length})
                             db_size = float(${this.state.db_size})
                             result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                            print('Done analyzing')
                             list(result_dict.keys())
-                        `).toJs();
+                        `);
+                        gene_list = gene_list.toJs();
                         delete window.bitscore;
                         delete window.distance;
                         if(gene_list){
@@ -296,26 +297,25 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                   });
                 }
 
-                handlePlotTextInput() {
+                async handlePlotTextInput() {
                     if (!this.state.text_input) {
                         alert(`Please provide score table!`);
                         return;
                     }
-                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
+                    this.setState({"results": new Map(), msg: "Running...", progress: true});
 
-                    this.pyodide_promise.then(pyodide => {
+                    this.pyodide_promise.then(async pyodide => {
                         window.text_input = this.state.text_input;
-                        console.log('starting')
-                        let gene_list = pyodide.runPython(`
+                        let gene_list = await pyodide.runPythonAsync(`
                             from js import text_input
                             e_value_cutoff = float(${this.state.e_value_cutoff})
                             gene_length = float(${this.state.gene_length})
                             db_size = float(${this.state.db_size})
                             result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                            print('Done analyzing')
                             list(result_dict.keys())
-                        `).toJs();
-                        console.log('done')
-                        console.log(gene_list)
+                        `);
+                        gene_list = gene_list.toJs();
                         delete window.text_input;
                         if(gene_list){
                             this.state.gene_names = gene_list
