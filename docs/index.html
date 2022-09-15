@@ -113,7 +113,7 @@
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense"])
+                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.2"])
                     import matplotlib as mpl
                     import matplotlib.pyplot as plt
                     import io
@@ -541,20 +541,21 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                         Select a Gene
                                                     </MaterialUI.Typography>
                                                 </MaterialUI.Box>
-                                                <MaterialUI.Select
-                                                multiple
-                                                native
-                                                variant="filled"
-                                                value={this.gene_select_name}
-                                                onChange={this.handleChangeMultiple}
-                                                label="List of Genes"
-                                                inputProps={{size: 30}}>
-                                                  {this.state.gene_names.map((name) => (
-                                                    <option key={name} value={name}>
-                                                      {name}
-                                                    </option>
-                                                  ))}
-                                                </MaterialUI.Select>
+                                                <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                                    <MaterialUI.Select
+                                                    multiple
+                                                    native
+                                                    variant="filled"
+                                                    value={this.gene_select_name}
+                                                    onChange={this.handleChangeMultiple}
+                                                    label="List of Genes"
+                                                    inputProps={{size: 30}}>
+                                                      {this.state.gene_names.map((name, i) => (i==0) ? 
+                                                        (<option key={name} value={name} selected>{name}</option>) :
+                                                        (<option key={name} value={name}>{name}</option>)
+                                                      )}
+                                                    </MaterialUI.Select>
+                                                </MaterialUI.Typography>
                                             </MaterialUI.Stack>
                                             <MaterialUI.Paper elevation={3}>
                                                 <Results results={this.state.results} />
