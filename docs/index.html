@@ -208,6 +208,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
+                        plot_is_ready: false
                     };
                 }
                 componentDidMount() {
@@ -239,8 +240,11 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 }
 
                 handleChangeMultiple = (e) => {
-                    console.log(e.target.value)
-                    this.state.gene_select_name = e.target.value
+                    this.state.gene_select_name = e.target.value;
+                    this.updatePlot();
+                }
+
+                updatePlot(){
                     if(this.state.gene_select_name && this.state.gene_names){
                         this.pyodide_promise.then(pyodide => {
                         let results = pyodide.runPython(`
@@ -251,80 +255,92 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             img_str = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('UTF-8')}"
                             img_str
                         `);
-                        this.setState({results: results});
+                        this.setState({
+                            results: results,
+                            msg: `Plot for ${this.state.gene_select_name}`,
+                            progress: false,
+                            plot_is_ready: true
+                        });
                       });
                     }
-
-
                 }
 
-                handlePlotUploadFile() {
+                async handlePlotUploadFile() {
                     if (!this.state.bitscoreString && !this.state.distanceString) {
                         alert(`Please provide values in distance and bitscore files!`);
                         return;
                     }
-                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
-                        this.pyodide_promise.then(pyodide => {
-                        window.bitscore = this.state.bitscoreString;
-                        window.distance = this.state.distanceString;
-                        window.e_value_cutoff = this.state.e_value_cutoff;
-                        window.gene_length = this.state.gene_length;
-                        window.db_size = this.state.db_size;
-                        let gene_list = pyodide.runPython(`
-                            from js import bitscore, distance, e_value_cutoff, gene_length, db_size
-                            # TODO use string interpolation for some of this variables
-                            bitscore = io.StringIO(bitscore)
-                            distance = io.StringIO(distance)
-                            e_value_cutoff = float(e_value_cutoff)
-                            gene_length = float(gene_length)
-                            db_size = float(db_size)
-                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
-                            list(result_dict.keys())
-                        `);
-                        delete window.bitscore;
-                        delete window.distance;
-                        delete window.e_value_cutoff;
-                        delete window.gene_length;
-                        delete window.db_size;
-                        // TODO handle case where list is empty
-                        this.setState({gene_select_name: gene_list[0],
-                                       gene_names: gene_list,
-                                       msg: `Plot for ${this.state.bitscoreFile.name}`,
-                                       progress: false});
+                    this.setState({"results": new Map(), msg: "Running...", progress: true});
+                    this.pyodide_promise.then(async pyodide => {
+                        try {
+                            window.bitscore = this.state.bitscoreString;
+                            window.distance = this.state.distanceString;
+                            let gene_list = await pyodide.runPythonAsync(`
+                                from js import bitscore, distance
+                                bitscore = io.StringIO(bitscore)
+                                distance = io.StringIO(distance)
+                                e_value_cutoff = float(${this.state.e_value_cutoff})
+                                gene_length = float(${this.state.gene_length})
+                                db_size = float(${this.state.db_size})
+                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_files(bitscore, distance, e_value_cutoff, gene_length, db_size) }
+                                print('Done analyzing')
+                                list(result_dict.keys())
+                            `);
+                            gene_list = gene_list.toJs();
+                            delete window.bitscore;
+                            delete window.distance;
+                            if(gene_list){
+                                this.state.gene_names = gene_list
+                                this.state.gene_select_name = gene_list[0]
+                                this.updatePlot();
+                            }
+                            else
+                                this.setState({msg: `Error during analysis`,
+                                               progress: false});
+                        }
+                        catch(e){
+                            console.log(e.message)
+                            this.setState({msg: `Error during analysis, recheck formatting`,
+                                           progress: false});
+                        }
                   });
                 }
 
-                handlePlotTextInput() {
+                async handlePlotTextInput() {
                     if (!this.state.text_input) {
                         alert(`Please provide score table!`);
                         return;
                     }
-                    this.setState({"results": new Map(), msg: "Plotting...", progress: true});
+                    this.setState({"results": new Map(), msg: "Running...", progress: true});
 
-                    this.pyodide_promise.then(pyodide => {
-                        window.text_input = this.state.text_input;
-                        window.e_value_cutoff = this.state.e_value_cutoff;
-                        window.gene_length = this.state.gene_length;
-                        window.db_size = this.state.db_size;
-                        console.log('starting')
-                        let gene_list = pyodide.runPython(`
-                            from js import text_input, e_value_cutoff, gene_length, db_size
-                            e_value_cutoff = float(e_value_cutoff)
-                            gene_length = float(gene_length)
-                            db_size = float(db_size)
-                            result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
-                            list(result_dict.keys())
-                        `).toJs();
-                        console.log(gene_list)
-                        console.log(gene_list[0])
-                        delete window.text_input;
-                        delete window.e_value_cutoff;
-                        delete window.gene_length;
-                        delete window.db_size;
-                        this.setState({gene_select_name: gene_list[0],
-                                       gene_names: gene_list,
-                                       msg: 'Plot for user-provided input',
-                                       progress: false});
+                    this.pyodide_promise.then(async pyodide => {
+                        try {
+                            window.text_input = this.state.text_input;
+                            let gene_list = await pyodide.runPythonAsync(`
+                                from js import text_input
+                                e_value_cutoff = float(${this.state.e_value_cutoff})
+                                gene_length = float(${this.state.gene_length})
+                                db_size = float(${this.state.db_size})
+                                result_dict = {name: plot for name, plot in pyodide_utilities.get_plots_from_text(text_input, e_value_cutoff, gene_length, db_size) }
+                                print('Done analyzing')
+                                list(result_dict.keys())
+                            `);
+                            gene_list = gene_list.toJs();
+                            delete window.text_input;
+                            if(gene_list){
+                                this.state.gene_names = gene_list
+                                this.state.gene_select_name = gene_list[0]
+                                this.updatePlot();
+                            }
+                            else
+                                this.setState({msg: `Error during analysis`,
+                                               progress: false});
+                        }
+                        catch(e){
+                            console.log(e.message)
+                            this.setState({msg: `Error during analysis, recheck formatting`,
+                                           progress: false});
+                        }
                   });
                 }
 
@@ -335,6 +351,29 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 
                     if (this.state.tab == "textInput")
                         return this.handlePlotTextInput()
+                }
+
+                savePlot() {
+                    if(this.state.gene_select_name && this.state.gene_names){
+                        this.pyodide_promise.then(pyodide => {
+                        let output = pyodide.runPython(`
+                            from js import Blob
+                            plot = result_dict["${this.state.gene_select_name}"]
+                            buf = io.BytesIO()
+                            plot.save(buf, format='svg')
+                            buf.seek(0)
+                            buf.read().decode('UTF-8')
+                        `);
+                        var blob = new Blob([output], {type: 'application/text'});
+                        var elem = window.document.createElement('a');
+                        elem.href = window.URL.createObjectURL(blob)    ;
+                        elem.download = `${this.state.gene_select_name}.svg`;
+                        document.body.appendChild(elem);
+                        elem.click();        
+                        document.body.removeChild(elem);
+
+                      });
+                    }
                 }
 
                 render() {
@@ -384,6 +423,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 			variant="contained"
 			size="large"
 			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!this.state.plot_is_ready}>Save Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
