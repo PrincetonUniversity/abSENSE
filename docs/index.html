@@ -24,7 +24,9 @@
     <body>
         <div id="root"> Loading... </div>
         <script type="text/babel">
-            const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
+          const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
+          function createData(name: string, prob: number, bitscore: number, conf: number) {return {name, prob, bitscore, conf };}
+	  const rows = [createData('Species1', 0.99, 0.99, 0.99), createData('Species2', 0.1, 0.1,0.1)];
             function Heading(props) {
                 return (
                     <MaterialUI.Box sx={{ flexGrow: 1, mb: 2 }}>
@@ -519,8 +521,35 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                             </MaterialUI.Paper>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
-                                </MaterialUI.Grid>
-                            </MaterialUI.Box>
+                            </MaterialUI.Grid>
+			    <MaterialUI.Grid>
+			    <MaterialUI.TableContainer component={MaterialUI.Paper}>
+			    <MaterialUI.Table sx={{ minWidth: 650 }} aria-label="Missing homologs">
+			    <MaterialUI.TableHead>
+			    <MaterialUI.TableRow>
+			    <MaterialUI.TableCell>Species&nbsp;missing&nbsp;a&nbsp;detected&nbsp;homolog</MaterialUI.TableCell>
+			    </MaterialUI.TableRow>
+			    </MaterialUI.TableHead>
+			    <MaterialUI.TableBody>
+			    {rows.map((row) => (
+			        <MaterialUI.TableRow
+				    key={row.name}
+				    sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
+				>
+				    <MaterialUI.TableCell component="th" scope="row">
+				        row.name
+				    </MaterialUI.TableCell>
+			            <MaterialUI.TableCell>{row.name}</MaterialUI.TableCell>
+				    <MaterialUI.TableCell>{row.prob}</MaterialUI.TableCell>
+				    <MaterialUI.TableCell>{row.bitscore}</MaterialUI.TableCell>
+				    <MaterialUI.TableCell>{row.conf}</MaterialUI.TableCell>
+				    </MaterialUI.TableRow>
+			    ))}
+			</MaterialUI.TableBody>
+			    </MaterialUI.Table>
+			    </MaterialUI.TableContainer>
+                            </MaterialUI.Grid>
+			    </MaterialUI.Box>
                         </MyThemeProvider>
                     );
                 }
