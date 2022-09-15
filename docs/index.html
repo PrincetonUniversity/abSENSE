@@ -113,7 +113,7 @@
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense"])
+                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.2"])
                     import matplotlib as mpl
                     import matplotlib.pyplot as plt
                     import io
@@ -208,6 +208,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
+                        plot_is_ready: false
                     };
                 }
                 componentDidMount() {
@@ -258,6 +259,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             results: results,
                             msg: `Plot for ${this.state.gene_select_name}`,
                             progress: false,
+                            plot_is_ready: true
                         });
                       });
                     }
@@ -351,6 +353,29 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         return this.handlePlotTextInput()
                 }
 
+                savePlot() {
+                    if(this.state.gene_select_name && this.state.gene_names){
+                        this.pyodide_promise.then(pyodide => {
+                        let output = pyodide.runPython(`
+                            from js import Blob
+                            plot = result_dict["${this.state.gene_select_name}"]
+                            buf = io.BytesIO()
+                            plot.save(buf, format='svg')
+                            buf.seek(0)
+                            buf.read().decode('UTF-8')
+                        `);
+                        var blob = new Blob([output], {type: 'application/text'});
+                        var elem = window.document.createElement('a');
+                        elem.href = window.URL.createObjectURL(blob)    ;
+                        elem.download = `${this.state.gene_select_name}.svg`;
+                        document.body.appendChild(elem);
+                        elem.click();        
+                        document.body.removeChild(elem);
+
+                      });
+                    }
+                }
+
                 render() {
                     let icon_close_distance = ''
                     if(this.state.distanceFile){
@@ -398,6 +423,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 			variant="contained"
 			size="large"
 			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
+                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!this.state.plot_is_ready}>Save Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
@@ -509,21 +535,28 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={12}>
                                         <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                                            <MaterialUI.Select
-                                            multiple
-                                            native
-                                            variant="filled"
-                                            value={this.gene_select_name}
-                                            onChange={this.handleChangeMultiple}
-                                            label="List of Genes"
-                                            inputProps={{size: 30}}>
-                                              {this.state.gene_names.map((name) => (
-                                                <option key={name} value={name}>
-                                                  {name}
-                                                </option>
-                                              ))}
-                                            </MaterialUI.Select>
-
+                                            <MaterialUI.Stack alignItems="center" sx={{ m: 1, mb: 0 }}>
+                                                <MaterialUI.Box>
+                                                    <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                                        Select a Gene
+                                                    </MaterialUI.Typography>
+                                                </MaterialUI.Box>
+                                                <MaterialUI.Typography variant="button" display="block" gutterBottom>
+                                                    <MaterialUI.Select
+                                                    multiple
+                                                    native
+                                                    variant="filled"
+                                                    value={this.gene_select_name}
+                                                    onChange={this.handleChangeMultiple}
+                                                    label="List of Genes"
+                                                    inputProps={{size: 30}}>
+                                                      {this.state.gene_names.map((name, i) => (i==0) ? 
+                                                        (<option key={name} value={name} selected>{name}</option>) :
+                                                        (<option key={name} value={name}>{name}</option>)
+                                                      )}
+                                                    </MaterialUI.Select>
+                                                </MaterialUI.Typography>
+                                            </MaterialUI.Stack>
                                             <MaterialUI.Paper elevation={3}>
                                                 <Results results={this.state.results} />
                                                 <MaterialUI.Box sx={{ p: 2 }}>
