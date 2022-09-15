@@ -375,7 +375,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                 <Heading />
                                 <MaterialUI.Grid container>
                                     <MaterialUI.Grid item xs={2}>
-                                        <MaterialUI.Stack spacing={2} alignItems="left" sx={{ m: 1, mb: 3 }} >
+                                        <MaterialUI.Stack spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
                                             <MaterialUI.Tabs sx={{flexGrow: 2}} orientation='vertical' value={this.state.tab} onChange={(e, v) => {this.setState({tab: v})}} aria-label="basic tabs example">
                                                 <MaterialUI.Tab label="Text Input" value="textInput" />
                                                 <MaterialUI.Tab label="File Upload" value="uploadFile" />
@@ -388,9 +388,9 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
                                         <TabPanel value={this.state.tab} index="uploadFile">
-                                            <MaterialUI.Stack alignItems="left" direction="row" sx={{ m: 1, mb: 1 }} >
-                                                <MaterialUI.Stack alignItems="left" sx={{ m: 1, mb: 1 }} >
-                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 1, mb: 3 }} >
+                                            <MaterialUI.Stack alignItems="left" direction="row" sx={{ m: 0, mb: 0 }} >
+                                                <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
+                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
                                                         <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
                                                           Upload Distance <input type="file" onChange={this.handleFileChangeDistance} value={!this.state.distanceFile ? '' : null} hidden />
                                                         </MaterialUI.Button>
@@ -399,7 +399,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                             {this.state.distanceFile ? this.state.distanceFile.name : 'Select a distance file.'}
                                                         </MaterialUI.Typography>
                                                     </MaterialUI.Stack>
-                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 1, mb: 3 }} >
+                                                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
                                                         <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
                                                           Upload Bitscore <input type="file" onChange={this.handleFileChangeBitscore} value={!this.state.bitscoreFile ? '' : null} hidden />
                                                         </MaterialUI.Button>
@@ -409,7 +409,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                         </MaterialUI.Typography>
                                                     </MaterialUI.Stack>
                                                 </MaterialUI.Stack>
-                                                <MaterialUI.Stack alignItems="left" sx={{ m: 1, mb: 1 }} >
+                                                <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
                                                     <MaterialUI.TextField
                                                         id="e-value-cutoff-2"
                                                         label="E-value cutoff"
@@ -444,7 +444,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                             </MaterialUI.Stack>
                                         </TabPanel>
                                         <TabPanel value={this.state.tab} index="textInput">
-                                            <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 1, mb: 3 }} >
+                                            <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
                                                 <MaterialUI.TextField 
                                                     id="workspace-text"
                                                     label="Custom Analysis"
@@ -458,7 +458,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                     maxRows={9}
                                                     onInput={(e) => this.setState({text_input: e.target.value})}
                                                 />
-                                                <MaterialUI.Stack alignItems="left" sx={{ m: 1, mb: 3 }} >
+                                                <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
                                                     <MaterialUI.TextField
                                                         id="e-value-cutoff"
                                                         label="E-value cutoff"
@@ -494,13 +494,15 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                         </TabPanel>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={12}>
-                                        <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 1, mb: 3 }} >
+                                        <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
                                             <MaterialUI.Select
                                             multiple
                                             native
+                                            variant="filled"
                                             value={this.gene_select_name}
                                             onChange={this.handleChangeMultiple}
-                                            label="List of Genes">
+                                            label="List of Genes"
+                                            inputProps={{size: 20}}>
                                               {this.state.gene_names.map((name) => (
                                                 <option key={name} value={name}>
                                                   {name}
