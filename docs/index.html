@@ -518,36 +518,37 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                                         {this.state.msg}
                                                     </MaterialUI.Typography>
                                                 </MaterialUI.Box>
-                                            </MaterialUI.Paper>
+                            </MaterialUI.Paper>
+			    <MaterialUI.TableContainer component={MaterialUI.Paper}>
+                            <MaterialUI.Table sx={{ minWidth: 650 }} aria-label="Missing homologs" size="small">
+                            <MaterialUI.TableHead>
+                            <MaterialUI.TableRow>
+                            <MaterialUI.TableCell>Species&nbsp;missing&nbsp;a&nbsp;detected&nbsp;homolog</MaterialUI.TableCell>
+                            <MaterialUI.TableCell>Probability&nbsp;of&nbsp;homolog&nbsp;detection&nbsp;failure&nbsp;(E=0.001)</MaterialUI.TableCell>
+                            <MaterialUI.TableCell>Predicted&nbsp;bitscore</MaterialUI.TableCell>
+                            <MaterialUI.TableCell>99&nbsp;percent&nbsp;confidence&nbsp;confidence&nbsp;interval</MaterialUI.TableCell>
+                            </MaterialUI.TableRow>
+                            </MaterialUI.TableHead>
+                            <MaterialUI.TableBody>
+                            {rows.map((row) => (
+                                <MaterialUI.TableRow
+                                    key={row.name}
+                                    sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                >
+                                    <MaterialUI.TableCell component="th" scope="row">
+                                        row.name
+                                    </MaterialUI.TableCell>
+                                    <MaterialUI.TableCell>{row.name}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell>{row.prob}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell>{row.bitscore}</MaterialUI.TableCell>
+                                    <MaterialUI.TableCell>{row.conf}</MaterialUI.TableCell>
+                                    </MaterialUI.TableRow>
+                            ))}
+                        </MaterialUI.TableBody>
+                            </MaterialUI.Table>
+                            </MaterialUI.TableContainer>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
-                            </MaterialUI.Grid>
-			    <MaterialUI.Grid>
-			    <MaterialUI.TableContainer component={MaterialUI.Paper}>
-			    <MaterialUI.Table sx={{ minWidth: 650 }} aria-label="Missing homologs">
-			    <MaterialUI.TableHead>
-			    <MaterialUI.TableRow>
-			    <MaterialUI.TableCell>Species&nbsp;missing&nbsp;a&nbsp;detected&nbsp;homolog</MaterialUI.TableCell>
-			    </MaterialUI.TableRow>
-			    </MaterialUI.TableHead>
-			    <MaterialUI.TableBody>
-			    {rows.map((row) => (
-			        <MaterialUI.TableRow
-				    key={row.name}
-				    sx = {{ '&:last-child td, &:last-child th': { border: 0 } }}
-				>
-				    <MaterialUI.TableCell component="th" scope="row">
-				        row.name
-				    </MaterialUI.TableCell>
-			            <MaterialUI.TableCell>{row.name}</MaterialUI.TableCell>
-				    <MaterialUI.TableCell>{row.prob}</MaterialUI.TableCell>
-				    <MaterialUI.TableCell>{row.bitscore}</MaterialUI.TableCell>
-				    <MaterialUI.TableCell>{row.conf}</MaterialUI.TableCell>
-				    </MaterialUI.TableRow>
-			    ))}
-			</MaterialUI.TableBody>
-			    </MaterialUI.Table>
-			    </MaterialUI.TableContainer>
                             </MaterialUI.Grid>
 			    </MaterialUI.Box>
                         </MyThemeProvider>
