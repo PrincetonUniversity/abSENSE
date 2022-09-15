@@ -208,7 +208,6 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
-                        plot_is_ready: false
                     };
                 }
                 componentDidMount() {
@@ -259,7 +258,6 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                             results: results,
                             msg: `Plot for ${this.state.gene_select_name}`,
                             progress: false,
-                            plot_is_ready: true
                         });
                       });
                     }
@@ -423,7 +421,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
 			variant="contained"
 			size="large"
 			disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Plot</MaterialUI.Button>
-                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!this.state.plot_is_ready}>Save Plot</MaterialUI.Button>
+                            <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!(this.state.gene_select_name && this.state.gene_names)}>Save Plot</MaterialUI.Button>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                     <MaterialUI.Grid item xs={10}>
