@@ -24,6 +24,7 @@
     <body>
         <div id="root"> Loading... </div>
         <script type="text/babel">
+    
             const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
             function Heading(props) {
                 return (
@@ -111,9 +112,14 @@
                 });
 
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
+                app.setState({msg: "Loading abSENSE packages ... ", progress: true});
                 await pyodide.runPythonAsync(`
                     import micropip
                     await micropip.install(["setuptools", "matplotlib", "absense==0.1.2"])
+                `);
+               
+                app.setState({msg: "Importing abSENSE packages ... ", progress: true});
+                await pyodide.runPythonAsync(`
                     import matplotlib as mpl
                     import matplotlib.pyplot as plt
                     import io
@@ -122,6 +128,7 @@
                     result_dict = {}
                 `);
                 app.setState({msg: DEFAULT_MSG, progress: false});
+                app.setState({absense_ready: true})
                 return pyodide;
             }
 
@@ -200,7 +207,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         distanceFile: null,
                         bitscoreString: null,
                         bitscoreFile: null,
-                        msg: DEFAULT_MSG,
+                        msg: "Initializing ... ",
                         progress: false,
                         tab: "textInput",
                         e_value_cutoff: 0.001,
@@ -208,6 +215,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         db_size: 4000000,
                         gene_select_name: null,
                         gene_names: [],
+                        absense_ready: false
                     };
                 }
                 componentDidMount() {
@@ -375,6 +383,7 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 }
 
                 render() {
+
                     let icon_close_distance = ''
                     if(this.state.distanceFile){
                         icon_close_distance = (
@@ -405,7 +414,15 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                         )
                     }
 
-                    return (
+                    return !this.state.absense_ready ? ( 
+                        <div className="absense_load_progress">
+                            <MaterialUI.Typography variant="h2">Loading abSENSE</MaterialUI.Typography>
+                            <MaterialUI.Typography variant="body1" component="div">
+                                {this.state.msg}
+                            </MaterialUI.Typography>
+                            <MaterialUI.LinearProgress disabled={!this.state.progress} />
+                        </div>
+                     ) : (
                         <MyThemeProvider>
                             <MaterialUI.CssBaseline />
                             <MaterialUI.Box>
