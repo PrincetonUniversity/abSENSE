@@ -113,7 +113,7 @@
                 await pyodide.loadPackage('micropip', (message) => {app.setState({msg: message, progress: true})});
                 await pyodide.runPythonAsync(`
                     import micropip
-                    await micropip.install(["setuptools", "matplotlib", "absense"])
+                    await micropip.install(["setuptools", "matplotlib", "absense==0.1.5"])
                     import io
                     from abSENSE import pyodide_utilities
                     analyzer = None
@@ -562,18 +562,25 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                                             </MaterialUI.Stack>
                                         </TabPanel>
                                     </MaterialUI.Grid>
-                                    <MaterialUI.Grid item xs={12}>
+                                    <MaterialUI.Grid xs={12}>
                                         <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                                            {select_gene_window}
-                                            <MaterialUI.Paper elevation={3}>
-                                                <Results results={this.state.results} />
-                                                <MaterialUI.Box sx={{ p: 2 }}>
-                                                    {this.state.progress && <MaterialUI.LinearProgress />}
-                                                    <MaterialUI.Typography variant="body1" component="div">
-                                                        {this.state.msg}
-                                                    </MaterialUI.Typography>
-                                                </MaterialUI.Box>
-                                            </MaterialUI.Paper>
+                                            <MaterialUI.Grid item xs={2}>
+                                                {select_gene_window}
+                                            </MaterialUI.Grid>
+                                            <MaterialUI.Grid item xs={7}>
+                                                <MaterialUI.Paper elevation={3}>
+                                                    <Results results={this.state.results} />
+                                                    <MaterialUI.Box sx={{ p: 2 }}>
+                                                        {this.state.progress && <MaterialUI.LinearProgress />}
+                                                        <MaterialUI.Typography variant="body1" component="div">
+                                                            {this.state.msg}
+                                                        </MaterialUI.Typography>
+                                                    </MaterialUI.Box>
+                                                </MaterialUI.Paper>
+                                            </MaterialUI.Grid>
+                                            <MaterialUI.Grid item xs={3}>
+                                                    <MaterialUI.Box sx={{ p: 2 }}>ADD TABLE FOR CHRIS</MaterialUI.Box>
+                                            </MaterialUI.Grid>
                                         </MaterialUI.Stack>
                                     </MaterialUI.Grid>
                                 </MaterialUI.Grid>
