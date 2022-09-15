@@ -21,6 +21,8 @@ class AbsenseParameters:
     predict_all: bool
     start_time: str
     validate: bool
+    default_gene_length: float = 400
+    default_db_length: float = 8_000_000
 
     @property
     def output_directory(self) -> str:
@@ -29,16 +31,6 @@ class AbsenseParameters:
             return f"abSENSE_results_{self.start_time}"
 
         return self.out_dir
-
-    @property
-    def default_gene_length(self) -> float:
-        """Default gene length."""
-        return 400
-
-    @property
-    def default_db_length(self) -> float:
-        """Default database length."""
-        return 8_000_000
 
     def need_plots(self) -> bool:
         """Return true if the params require plotting."""
