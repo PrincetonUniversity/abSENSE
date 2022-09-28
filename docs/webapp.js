@@ -329,12 +329,25 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
   }
 
 
-  handlePlot() {
-    if (this.state.tab == "uploadFile")
-      return this.handlePlotUploadFile()
-
+  async handleAnalyze() {
     if (this.state.tab == "textInput")
-      return this.handlePlotTextInput()
+      return this.handlePlotTextInput();
+
+    if (this.state.tab == "publishedFungi"){
+      let gitdata = await fetch("https://raw.githubusercontent.com/caraweisman/abSENSE/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Fungi_Data/Fungi_Bitscores");
+      this.state.bitscoreString = await gitdata.text();
+      gitdata = await fetch("https://raw.githubusercontent.com/caraweisman/abSENSE/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Fungi_Data/Fungi_Distances");
+      this.state.distanceString = await gitdata.text();
+    }
+
+    if (this.state.tab == "publishedInsect"){
+      let gitdata = await fetch("https://raw.githubusercontent.com/caraweisman/abSENSE/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Insect_Data/Insect_Bitscores");
+      this.state.bitscoreString = await gitdata.text();
+      gitdata = await fetch("https://raw.githubusercontent.com/caraweisman/abSENSE/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Insect_Data/Insect_Distances");
+      this.state.distanceString = await gitdata.text();
+    }
+
+    return this.handlePlotUploadFile();
   }
 
   savePlot() {
@@ -438,127 +451,102 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 <MaterialUI.Tabs sx={{flexGrow: 2}} orientation='vertical' value={this.state.tab} onChange={(e, v) => {this.setState({tab: v})}} aria-label="basic tabs example">
                   <MaterialUI.Tab label="Text Input" value="textInput" />
                   <MaterialUI.Tab label="File Upload" value="uploadFile" />
+                  <MaterialUI.Tab label="Fungi Results" value="publishedFungi" />
+                  <MaterialUI.Tab label="Insect Results" value="publishedInsect" />
                 </MaterialUI.Tabs>
-                <MaterialUI.Button onClick={() => this.handlePlot()}
+                <MaterialUI.Button onClick={() => this.handleAnalyze()}
                   variant="contained"
                   size="large"
                   disabled={this.state.progress || (this.state.tab == "uploadFile" && !(this.state.bitscoreFile && this.state.distanceFile)) || (!this.state.text_input && this.state.tab == "textInput")}>Analyze</MaterialUI.Button>
                 <MaterialUI.Button onClick={() => this.savePlot()} variant="contained" size="large" disabled={!(this.state.gene_select_name && this.state.gene_names)}>Save Plot</MaterialUI.Button>
               </MaterialUI.Stack>
             </MaterialUI.Grid>
-            <MaterialUI.Grid item xs={10}>
-              <TabPanel value={this.state.tab} index="uploadFile">
-                <MaterialUI.Stack alignItems="left" direction="row" sx={{ m: 0, mb: 0 }} >
-                  <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
-                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
-                      <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
-                        Upload Distance <input type="file" onChange={this.handleFileChangeDistance} value={!this.state.distanceFile ? '' : null} hidden />
-                      </MaterialUI.Button>
-                      {icon_close_distance}
-                      <MaterialUI.Typography variant="body1" component="div" sx={{flexGrow: 2}}>
-                        {this.state.distanceFile ? this.state.distanceFile.name : 'Select a distance file.'}
-                      </MaterialUI.Typography>
-                    </MaterialUI.Stack>
-                    <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
-                      <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
-                        Upload Bitscore <input type="file" onChange={this.handleFileChangeBitscore} value={!this.state.bitscoreFile ? '' : null} hidden />
-                      </MaterialUI.Button>
-                      {icon_close_bitscore}
-                      <MaterialUI.Typography variant="body1" component="div" sx={{flexGrow: 2}}>
-                        {this.state.bitscoreFile ? this.state.bitscoreFile.name : 'Select a bitscore file.'}
-                      </MaterialUI.Typography>
-                    </MaterialUI.Stack>
-                  </MaterialUI.Stack>
-                  <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
-                    <MaterialUI.TextField
-                      id="e-value-cutoff-2"
-                      label="E-value cutoff"
-                      variant="filled"
-                      autoFocus={false}
-                      sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                      value={this.state.e_value_cutoff}
-                      onInput={(e) => this.setState({e_value_cutoff: e.target.value})}
-                      type="number"
-                      />
-                    <MaterialUI.TextField
-                      id="gene-length-2"
-                      label="Gene length (aa)"
-                      variant="filled"
-                      autoFocus={false}
-                      sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                      value={this.state.gene_length}
-                      onInput={(e) => this.setState({gene_length: e.target.value})}
-                      type="number"
-                      />
-                    <MaterialUI.TextField
-                      id="db-size-2"
-                      label="Database size (per species) (aa)"
-                      variant="filled"
-                      autoFocus={false}
-                      sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                      value={this.state.db_size}
-                      onInput={(e) => this.setState({db_size: e.target.value})}
-                      type="number"
-                      />
-                  </MaterialUI.Stack>
-                </MaterialUI.Stack>
-              </TabPanel>
+            <MaterialUI.Grid item xs={8}>
               <TabPanel value={this.state.tab} index="textInput">
-                <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                  <MaterialUI.TextField 
-                    id="workspace-text"
-                    label="Custom Analysis"
-                    helperText="Separate columns with pipe(|), comma(,) or tab."
-                    variant="filled"
-                    autoFocus={true}
-                    sx={{flexGrow: 1, m: 1}}
-                    value={this.state.text_input}
-                    multiline
-                    minRows={3}
-                    maxRows={9}
-                    onInput={(e) => this.setState({text_input: e.target.value})}
-                    />
-                  <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
-                  <MaterialUI.TextField
-                    id="e-value-cutoff"
-                    label="E-value cutoff"
-                    variant="filled"
-                    autoFocus={false}
-                    sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                    value={this.state.e_value_cutoff}
-                    onInput={(e) => this.setState({e_value_cutoff: e.target.value})}
-                    type="number"
-                    />
-                  <MaterialUI.TextField
-                    id="gene-length"
-                    label="Gene length (aa)"
-                    variant="filled"
-                    autoFocus={false}
-                    sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                    value={this.state.gene_length}
-                    onInput={(e) => this.setState({gene_length: e.target.value})}
-                    type="number"
-                    />
-                  <MaterialUI.TextField
-                    id="db-size"
-                    label="Database size (per species) (aa)"
-                    variant="filled"
-                    autoFocus={false}
-                    sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
-                    value={this.state.db_size}
-                    onInput={(e) => this.setState({db_size: e.target.value})}
-                    type="number"
-                    />
+                <MaterialUI.TextField 
+                  id="workspace-text"
+                  label="Custom Analysis"
+                  helperText="Separate columns with pipe(|), comma(,) or tab."
+                  variant="filled"
+                  autoFocus={true}
+                  sx={{flexGrow: 1, m: 1}}
+                  value={this.state.text_input}
+                  multiline
+                  fullWidth
+                  minRows={3}
+                  maxRows={9}
+                  onInput={(e) => this.setState({text_input: e.target.value})}
+                  />
+              </TabPanel>
+              <TabPanel value={this.state.tab} index="uploadFile">
+                <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} spacing={2}>
+                  <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
+                    <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
+                      Upload Distance <input type="file" onChange={this.handleFileChangeDistance} value={!this.state.distanceFile ? '' : null} hidden />
+                    </MaterialUI.Button>
+                    {icon_close_distance}
+                    <MaterialUI.Typography variant="body1" component="div" sx={{flexGrow: 2}}>
+                      {this.state.distanceFile ? this.state.distanceFile.name : 'Select a distance file.'}
+                    </MaterialUI.Typography>
+                  </MaterialUI.Stack>
+                  <MaterialUI.Stack direction="row" spacing={2} alignItems="center" sx={{ m: 0, mb: 0 }} >
+                    <MaterialUI.Button variant="contained" component="label" disabled={this.state.progress}>
+                      Upload Bitscore <input type="file" onChange={this.handleFileChangeBitscore} value={!this.state.bitscoreFile ? '' : null} hidden />
+                    </MaterialUI.Button>
+                    {icon_close_bitscore}
+                    <MaterialUI.Typography variant="body1" component="div" sx={{flexGrow: 2}}>
+                      {this.state.bitscoreFile ? this.state.bitscoreFile.name : 'Select a bitscore file.'}
+                    </MaterialUI.Typography>
                   </MaterialUI.Stack>
                 </MaterialUI.Stack>
               </TabPanel>
+              <TabPanel value={this.state.tab} index="publishedFungi">
+                From <a href="https://github.com/caraweisman/abSENSE/tree/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Fungi_Data">Fungi_Data</a> as described in <a href="https://doi.org/10.1371/journal.pbio.3000862">Weisman et. al.</a>
+              </TabPanel>
+              <TabPanel value={this.state.tab} index="publishedInsect">
+                From <a href="https://github.com/caraweisman/abSENSE/tree/c355c458e83722a0ffdf7284d4ea1f6f29ce205f/Insect_Data">Insect_Data</a> as described in <a href="https://doi.org/10.1371/journal.pbio.3000862">Weisman et. al.</a>
+              </TabPanel>
+            </MaterialUI.Grid>
+            <MaterialUI.Grid item xs={2}>
+              <MaterialUI.Stack alignItems="left" sx={{ m: 0, mb: 0 }} >
+                <MaterialUI.TextField
+                id="e-value-cutoff"
+                label="E-value cutoff"
+                variant="filled"
+                autoFocus={false}
+                sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
+                value={this.state.e_value_cutoff}
+                onInput={(e) => this.setState({e_value_cutoff: e.target.value})}
+                type="number"
+                />
+                <MaterialUI.TextField
+                id="gene-length"
+                label="Gene length (aa)"
+                variant="filled"
+                autoFocus={false}
+                sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
+                value={this.state.gene_length}
+                onInput={(e) => this.setState({gene_length: e.target.value})}
+                type="number"
+                />
+                <MaterialUI.TextField
+                id="db-size"
+                label="Database size (per species) (aa)"
+                variant="filled"
+                autoFocus={false}
+                sx={{flexGrow: 1, m: 1, width:{sm:200,md:300}}}
+                value={this.state.db_size}
+                onInput={(e) => this.setState({db_size: e.target.value})}
+                type="number"
+                />
+              </MaterialUI.Stack>
             </MaterialUI.Grid>
             <MaterialUI.Grid item xs={12}>
               <MaterialUI.Stack direction="row" spacing={2} alignItems="left" sx={{ m: 0, mb: 0 }} >
-                <MaterialUI.Grid item xs={1}>
+                <MaterialUI.Grid item xs={2}>
                   {select_gene_window}
                 </MaterialUI.Grid>
-                <MaterialUI.Grid item xs={7}>
+                <MaterialUI.Grid item xs={6}>
                   <MaterialUI.Paper elevation={3}>
                     <Results results={this.state.results} />
                     <MaterialUI.Box sx={{ p: 2 }}>
@@ -571,14 +559,14 @@ Y_lip	0.954	1297	714	N/A	0	0	0	0	375	0`,
                 </MaterialUI.Grid>
                 <MaterialUI.Grid item xs={4}>
                   <MaterialUI.TableContainer component={MaterialUI.Paper}>
-                    <MaterialUI.Table stickyHeader sx={{ minWidth: 650 }} aria-label="Missing homologs" size="small" >
+                    <MaterialUI.Table stickyHeader aria-label="Missing homologs" size="small" >
                       <MaterialUI.TableHead>
                         <MaterialUI.TableRow>
                           <MaterialUI.TableCell size="small">
-                            Species name 
+                            Species
                           </MaterialUI.TableCell>
                           <MaterialUI.TableCell  size="small">
-                            P(detection<br/>failure | E=0.001)
+                            P(detection<br/>failure | E={this.state.e_value_cutoff})
                           </MaterialUI.TableCell>
                           <MaterialUI.TableCell  size="small">
                             Predicted<br/>bitscore
