@@ -208,7 +208,10 @@ You can specify additional options, found by running `absense --help`.
   directory.
 
 - `--validate`: When set, will to tabulate how well the current distances
-  fit the bitscores.
+  fit the bitscores.  During validation, each gene is analyzed multiple times
+  with one species set to `N/A`.  The ability to correctly predict the bitscore
+  and other statistics are reported for each species.  Large errors can indicate
+  a poor estimate of genetic distance for that species.
 
 
 For example, to run an analysis on all S. cerevisiae proteins in the selected

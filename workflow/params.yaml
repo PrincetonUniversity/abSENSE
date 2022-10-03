@@ -34,10 +34,11 @@ species:
   S_bay:
     url: "http://www.saccharomycessensustricto.org/current/Sbay/Sbay.aa"
   S_cas:
-    # genback or refseq accessions will be downloaded with datasets from ncbi
+    # genbank or refseq accessions will be downloaded with `datasets` from ncbi
     accession: GCF_000237345.1
   K_wal:
     # local files will be soft linked, must be uncompressed
+    # relative paths are relative to the working directory above
     file: "/scratch/gpfs/tcomi/absense/fastas/K_wal.faa"
   A_gos:
     accession: GCF_000091025.4
