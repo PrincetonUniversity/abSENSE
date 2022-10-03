@@ -1,4 +1,4 @@
-const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to pyhf for inspiration.";
+const DEFAULT_MSG = "Interpret undetected homologs. Runs entirely in your browser using React, MaterialUI, and Pyodide. Thanks to scikit-hep/repo-review for inspiration!";
 
 function Heading(props) {
   return (
@@ -12,7 +12,7 @@ function Heading(props) {
             href="https://github.com/PrincetonUniversity/abSENSE"
             color="inherit">Source</MaterialUI.Button>
           <MaterialUI.Button
-            href="https://github.com/kratsg/try-pyhf"
+            href="https://github.com/scikit-hep/repo-review"
             color="inherit">Inspiration</MaterialUI.Button>
         </MaterialUI.Toolbar>
       </MaterialUI.AppBar>
