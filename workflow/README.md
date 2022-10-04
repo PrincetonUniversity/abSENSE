@@ -3,7 +3,7 @@
 This directory contains a [snakemake](https://snakemake.readthedocs.io/en/stable/index.html)
 workflow for performing analysis with abSENSE starting from a public URL or
 local faa file.  Simply modify the `params.yaml` file to setup the analysis
-and run `snakemake` to produce the analyzed results.
+and run `snakemake --configfile params.yaml` to produce the analyzed results.
 
 ## Parameters
 

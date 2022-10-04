@@ -1,5 +1,4 @@
 import random
-configfile: 'params.yaml'
 configfile: 'paths.yaml'
 
 paths = config['paths']
@@ -107,6 +106,11 @@ checkpoint download_busco:
             '{params.url} \n'
         'tar -xzf {output}.tar.gz \n'
         'rm {output}.tar.gz'
+
+rule download_all:
+    input:
+        paths['busco'],
+        expand(paths['busco'], species=config['species'].keys()),
 
 rule hmmer_busco:
     """Perform hmmsearch for each id.
