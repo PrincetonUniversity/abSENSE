@@ -1,6 +1,7 @@
 # abSENSE: a method to interpret undetected homologs
 
 [![Try Now!][pyodide-badge]][pyodide-link]
+
 [![Actions Status][actions-badge]][actions-link]
 [![Documentation Status][rtd-badge]][rtd-link]
 
@@ -8,7 +9,7 @@
 [![PyPI platforms][pypi-platforms]][pypi-link]
 
 [pyodide-badge]:            https://img.shields.io/badge/Pyodide-Try%20It!-blue.svg
-[pyodide-link]:             https://potential-waffle-8b9309b7.pages.github.io/
+[pyodide-link]:             https://princetonuniversity.github.io/abSENSE/
 [actions-badge]:            https://github.com/PrincetonUniversity/abSENSE/workflows/CI/badge.svg
 [actions-link]:             https://github.com/PrincetonUniversity/abSENSE/actions
 [pypi-link]:                https://pypi.org/project/abSENSE/
