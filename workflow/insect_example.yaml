@@ -1,0 +1,61 @@
+---
+# base directory for data and results
+workdir: 'results'
+
+# analysis parameters
+# e value threshold for matching busco genes to faa entries
+hmmer_e_val: 0.01
+# e value threshold for detecting reciprical matches between species
+blast_e_val: 0.001
+
+# Parameters for providing confidence on genetic distance estimate
+protdist_replicates: 50
+validate_genes: 100
+
+species:
+  # will be used for labeling files, no spaces, must be unique and 5 characters long
+  D_mel:
+    focal: true
+    accession: GCF_000001215.4
+  D_sim:
+    accession: GCF_000754195.2
+  D_sec:
+    accession: GCF_000005215.3
+  D_ere:
+    accession: GCF_000005135.1
+  D_yak:
+    accession: GCF_000005975.2
+  D_pse:
+    accession: GCF_000001765.3
+  D_per:
+    accession: GCF_000005195.1
+  D_wil:
+    accession: GCF_000005925.1
+  D_vir:
+    accession: GCF_000005245.1
+  D_gri:
+    accession: GCF_000005155.2
+  D_moj:
+    accession: GCF_000005175.2
+  M_dom:
+    accession: GCF_000371365.1
+  C_cap:
+    accession: GCF_000347755.3
+  A_aeg:
+    accession: GCF_002204515.2
+  A_gam:
+    accession: GCF_000005575.2
+  Z_nev:
+    accession: GCF_000696155.1
+  T_cas:
+    accession: GCF_000002335.3
+  A_mel:
+    accession: GCF_000002195.4
+  B_ger:
+    accession: GCA_003018175.1
+  B_ter:
+    accession: GCF_000214255.1
+  B_mor:
+    accession: GCF_000151625.1
+  A_pis:
+    accession: GCF_000142985.2

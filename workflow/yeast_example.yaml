@@ -1,0 +1,42 @@
+---
+# base directory for data and results
+workdir: 'results'
+
+# analysis parameters
+# e value threshold for matching busco genes to faa entries
+hmmer_e_val: 0.01
+# e value threshold for detecting reciprical matches between species
+blast_e_val: 0.001
+
+# Parameters for providing confidence on genetic distance estimate
+protdist_replicates: 50
+validate_genes: 100
+
+species:
+  # will be used for labeling files, no spaces, must be unique and 5 characters long
+  S_cer:
+    focal: true
+    url: "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_protein.faa.gz"
+  S_par:
+    url: "http://www.saccharomycessensustricto.org/current/Spar/Spar.aa"
+  S_mik:
+    url: "http://www.saccharomycessensustricto.org/current/Smik/Smik.aa"
+  S_kud:
+    url: "http://www.saccharomycessensustricto.org/current/Skud/Skud.aa"
+  S_bay:
+    url: "http://www.saccharomycessensustricto.org/current/Sbay/Sbay.aa"
+  S_cas:
+    accession: GCF_000237345.1
+  K_wal:
+    # from https://static-content.springer.com/esm/art%3A10.1038%2Fnature02424/MediaObjects/41586_2004_BFnature02424_MOESM2_ESM.zip
+    file: "data/fastas/K_wal.faa"
+  A_gos:
+    accession: GCF_000091025.4
+  K_lac:
+    accession: GCF_000002515.2
+  A_nid:
+    accession: GCA_000149205.2
+  S_pom:
+    accession: GCA_000002945.2
+  Y_lip:
+    accession: GCA_000002525.1
