@@ -1,5 +1,6 @@
 name: phylip
 channels:
+  - conda-forge
   - bioconda
 dependencies:
   - phylip=3.697
